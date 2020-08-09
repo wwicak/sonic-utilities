@@ -106,16 +106,6 @@ class AbbreviationGroup(click.Group):
             ctx.fail('Too many matches: %s' % ', '.join(sorted(matches)))
 
 #
-# Load asic_type for further use
-#
-
-try:
-    version_info = sonic_device_util.get_sonic_version_info()
-    asic_type = version_info['asic_type']
-except (KeyError, TypeError):
-    raise click.Abort()
-
-#
 # Helper functions
 #
 
