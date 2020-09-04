@@ -1,5 +1,7 @@
 import click
-from show.main import AliasedGroup, ip, run_command, get_bgp_summary_extended
+import utilities_common.bgp_util as bgp_util
+from show.main import AliasedGroup, ip, run_command 
+
 
 
 ###############################################################################
@@ -21,7 +23,7 @@ def summary():
     """Show summarized information of IPv4 BGP state"""
     try:
         device_output = run_command('sudo vtysh -c "show ip bgp summary"', return_cmd=True)
-        get_bgp_summary_extended(device_output)
+        bgp_util.get_bgp_summary_extended(device_output)
     except:
         run_command('sudo vtysh -c "show ip bgp summary"')
 
