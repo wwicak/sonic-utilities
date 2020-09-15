@@ -776,7 +776,7 @@ def load(filename, yes):
                 file = "/etc/sonic/config_db{}.json".format(inst)
 
         # if any of the config files in linux host OR namespace is not present, return
-        if not os.path.isfile(file):
+        if not os.path.exists(file):
             click.echo("The config_db file {} doesn't exist".format(file))
             return
 
@@ -858,7 +858,7 @@ def reload(filename, yes, load_sysinfo, no_service_restart):
                 file = "/etc/sonic/config_db{}.json".format(inst)
 
         # Check the file exists before proceeding.
-        if not os.path.isfile(file):
+        if not os.path.exists(file):
             click.echo("The config_db file {} doesn't exist".format(file))
             continue
 
