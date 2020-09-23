@@ -985,10 +985,8 @@ def load_minigraph(no_service_restart):
         run_command(command, display_cmd=True)
         client.set(config_db.INIT_INDICATOR, 1)
 
-        # These commands are not run for host on multi asic platform
-        if num_npus == 1 or namespace is not DEFAULT_NAMESPACE:
-            if device_type != 'MgmtToRRouter':
-                run_command('{}pfcwd start_default'.format(ns_cmd_prefix), display_cmd=True)
+    if device_type != 'MgmtToRRouter':
+        clicommon.run_command("pfcwd start_default", display_cmd=True)
 
     if os.path.isfile('/etc/sonic/acl.json'):
         run_command("acl-loader update full /etc/sonic/acl.json", display_cmd=True)
