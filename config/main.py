@@ -986,7 +986,7 @@ def load_minigraph(no_service_restart):
         client.set(config_db.INIT_INDICATOR, 1)
 
     if device_type != 'MgmtToRRouter':
-        clicommon.run_command("pfcwd start_default", display_cmd=True)
+        run_command("pfcwd start_default", display_cmd=True)
 
     if os.path.isfile('/etc/sonic/acl.json'):
         run_command("acl-loader update full /etc/sonic/acl.json", display_cmd=True)
