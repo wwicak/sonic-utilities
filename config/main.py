@@ -633,6 +633,10 @@ def _restart_services():
 
     execute_systemctl(services_to_restart, SYSTEMCTL_ACTION_RESTART)
 
+    # Reload Monit configuration to pick up new hostname in case it changed
+    click.echo("Reloading Monit configuration ...")
+    clicommon.run_command("sudo monit reload")
+
 
 def is_ipaddress(val):
     """ Validate if an entry is a valid IP """
@@ -1031,6 +1035,11 @@ def hostname(new_hostname):
     except SystemExit as e:
         click.echo("Restarting hostname-config  service failed with error {}".format(e))
         raise
+
+    # Reload Monit configuration to pick up new hostname in case it changed
+    click.echo("Reloading Monit configuration ...")
+    clicommon.run_command("sudo monit reload")
+
     click.echo("Please note loaded setting will be lost after system reboot. To preserve setting, run `config save`.")
 
 #
