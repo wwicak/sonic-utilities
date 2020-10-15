@@ -635,7 +635,7 @@ def _restart_services():
 
     # Reload Monit configuration to pick up new hostname in case it changed
     click.echo("Reloading Monit configuration ...")
-    clicommon.run_command("sudo monit reload")
+    run_command("sudo monit reload")
 
 
 def is_ipaddress(val):
@@ -1038,7 +1038,7 @@ def hostname(new_hostname):
 
     # Reload Monit configuration to pick up new hostname in case it changed
     click.echo("Reloading Monit configuration ...")
-    clicommon.run_command("sudo monit reload")
+    run_command("sudo monit reload")
 
     click.echo("Please note loaded setting will be lost after system reboot. To preserve setting, run `config save`.")
 
