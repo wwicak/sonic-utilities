@@ -3294,12 +3294,16 @@ def feature():
 @click.argument('state', metavar='<state>', required=True, type=click.Choice(["enabled", "disabled"]))
 def feature_state(name, state):
     """Enable/disable a feature"""
-    state_data = config_db.get_entry('FEATURE', name)
+    entry_data = config_db.get_entry('FEATURE', name)
 
-    if not state_data:
+    if not entry_data:
         click.echo("Feature '{}' doesn't exist".format(name))
         sys.exit(1)
 
+    if entry_data['state'] == "always_enabled":
+        click.echo("Feature '{}' state is always enabled and can not be modified".format(name))
+        return
+    
     config_db.mod_entry('FEATURE', name, {'state': state})
 
 #
@@ -3310,15 +3314,15 @@ def feature_state(name, state):
 @click.argument('autorestart', metavar='<autorestart>', required=True, type=click.Choice(["enabled", "disabled"]))
 def feature_autorestart(name, autorestart):
     """Enable/disable autorestart of a feature"""
-    feature_table = config_db.get_table('FEATURE')
-    if not feature_table:
-        click.echo("Unable to retrieve feature table from Config DB.")
+    entry_data = config_db.get_entry('FEATURE', name)
+    if not entry_data:
+        click.echo("Feature '{}' doesn't exist".format(name))
         sys.exit(1)
 
-    if not feature_table.has_key(name):
-        click.echo("Unable to retrieve feature '{}'".format(name))
-        sys.exit(1)
-
+    if entry_data['auto_restart'] == "always_enabled":
+        click.echo("Feature '{}' auto-restart is always enabled and can not be modified".format(name))
+        return
+ 
     config_db.mod_entry('FEATURE', name, {'auto_restart': autorestart})
 
 if __name__ == '__main__':

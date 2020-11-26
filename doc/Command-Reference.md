@@ -31,9 +31,6 @@
 * [BGP](#bgp)
   * [BGP show commands](#bgp-show-commands)
   * [BGP config commands](#bgp-config-commands)
-* [Container Auto-restart](#container-autorestart-commands)
-  * [Container Auto-restart show commands](#container-autorestart-show-commands)
-  * [Container Auto-restart config command](#container-autorestart-config-command)
 * [DHCP Relay](#dhcp-relay)
   * [DHCP Relay config commands](#dhcp-relay-config-commands)
 * [Drop Counters](#drop-counters)
@@ -43,6 +40,9 @@
 * [ECN](#ecn)
   * [ECN show commands](#ecn-show-commands)
   * [ECN config commands](#ecn-config-commands)
+* [Feature](#feature)
+  * [Feature show commands](#feature-show-commands)
+  * [Feature config commands](#feature-config-commands)
 * [Interfaces](#interfaces)
   * [Interface Show Commands](#interface-show-commands)
   * [Interface Config Commands](#interface-config-commands)
@@ -256,6 +256,7 @@ This command lists all the possible configuration commands at the top level.
     acl                    ACL-related configuration tasks
     bgp                    BGP-related configuration tasks
     ecn                    ECN-related configuration tasks
+    feature                Modify configuration of features
     hostname               Change device hostname without impacting traffic
     interface              Interface-related configuration tasks
     interface_naming_mode  Modify interface naming mode for interacting...
@@ -273,7 +274,6 @@ This command lists all the possible configuration commands at the top level.
     vlan                   VLAN-related configuration tasks
     warm_restart           warm_restart-related configuration tasks
     watermark              Configure watermark
-    container              Modify configuration of containers
   ```
 Go Back To [Beginning of the document](#) or [Beginning of this section](#getting-help)
 
@@ -304,6 +304,7 @@ This command displays the full list of show commands available in the software; 
     clock                 Show date and time
     ecn                   Show ECN configuration
     environment           Show environmentals (voltages, fans, temps)
+    feature               Show feature status
     interfaces            Show details of the network interfaces
     ip                    Show IP (IPv4) commands
     ipv6                  Show IPv6 commands
@@ -335,7 +336,6 @@ This command displays the full list of show commands available in the software; 
     vlan                  Show VLAN information
     warm_restart          Show warm restart configuration and state
     watermark             Show details of watermark
-    container             Show details of container
   ```
 
 The same syntax applies to all subgroups of `show` which themselves contain subcommands, and subcommands which accept options/arguments.
@@ -1888,63 +1888,6 @@ This command is used to remove particular IPv4 or IPv6 BGP neighbor configuratio
 
 Go Back To [Beginning of the document](#) or [Beginning of this section](#bgp)
 
-## Container Auto-restart
-SONiC includes a feature in which Docker containers can be automatically shut
-down and restarted if one of critical processes running in the container exits
-unexpectedly. Restarting the entire container ensures that configureation is 
-reloaded and all processes in the container get restarted, thus increasing the
-likelihood of entering a healthy state.
-
-### Container Auto-restart show commands
-
-**show container feature autorestart**
-
-This command will display the status of auto-restart feature for containers.
-
-- Usage:
-  ```
-  show container feature autorestart [<container_name>]
-  ```
-
-- Example:
-  ```
-  admin@sonic:~$ show container feature autorestart
-  Container Name    Status
-  --------------    --------
-  database          enabled
-  syncd             enabled
-  teamd             disabled
-  dhcp_relay        enabled
-  lldp              enabled
-  pmon              enabled
-  bgp               enabled
-  swss              disabled
-  telemetry         enabled
-  sflow             enabled
-  snmp              enabled
-  radv              disabled
-  ```
-
-Optionally, you can specify a container name in order to display the auto-restart
-feature status for that container only.
-
-### Container Auto-restart config command
-
-**config container feature autorestart <container_name> <autorestart_status>**
-
-This command will configure the status of auto-restart feature for a specific container.
-
-- Usage:
-  ```
-  sudo config container feature autorestart <container_name> (enabled | disabled)
-  ```
-
-- Example:
-  ```
-  admin@sonic:~$ sudo config container feature autorestart database disabled
-  ``` 
-Go Back To [Beginning of the document](#) or [Beginning of this section](#container-autorestart-commands)
-
 ## DHCP Relay
 
 ### DHCP Relay config commands
@@ -2245,6 +2188,109 @@ The list of the WRED profile fields that are configurable is listed in the below
   ```
 
 Go Back To [Beginning of the document](#) or [Beginning of this section](#ecn)
+
+## Feature
+
+SONiC includes a capability in which Feature state can be enabled/disabled
+which will make corresponding feature docker container to start/stop.
+
+Also SONiC provide capability in which Feature docker container can be automatically shut
+down and restarted if one of critical processes running in the container exits
+unexpectedly. Restarting the entire feature container ensures that configuration is 
+reloaded and all processes in the feature container get restarted, thus increasing the
+likelihood of entering a healthy state.
+
+### Feature show commands
+
+**show feature status**
+
+This command will display the status of feature state.
+
+- Usage:
+  ```
+  show feature status [<feature_name>]
+  ```
+
+- Example:
+  ```
+  admin@sonic:~$ show feature status
+  Feature     State           AutoRestart
+  ----------  --------------  --------------
+  bgp         enabled         enabled
+  database    always_enabled  always_enabled
+  dhcp_relay  enabled         enabled
+  lldp        enabled         enabled
+  pmon        enabled         enabled
+  radv        enabled         enabled
+  snmp        enabled         enabled
+  swss        always_enabled  enabled
+  syncd       always_enabled  enabled
+  teamd       always_enabled  enabled
+  telemetry   enabled         enabled
+  ```
+**show feature autorestart**
+
+This command will display the status of auto-restart for feature container.
+
+- Usage:
+  ```
+  show feature autorestart [<feature_name>]
+  ```
+
+- Example:
+  ```
+  admin@sonic:~$ show feature autorestart
+  Feature     AutoRestart
+  ----------  --------------
+  bgp         enabled
+  database    always_enabled
+  dhcp_relay  enabled
+  lldp        enabled
+  pmon        enabled
+  radv        enabled
+  snmp        enabled
+  swss        enabled
+  syncd       enabled
+  teamd       enabled
+  telemetry   enabled
+  ```
+
+Optionally, you can specify a feature name in order to display
+status for that feature
+
+### Feature config commands
+
+**config feature state <feature_name> <state>**
+
+This command will configure the state for a specific feature.
+
+- Usage:
+  ```
+  config feature state <feature_name> (enabled | disabled)
+  ```
+
+- Example:
+  ```
+  admin@sonic:~$ sudo config feature state bgp disabled
+  ``` 
+
+**config feature autorestart <feature_name> <autorestart_status>**
+
+This command will configure the status of auto-restart for a specific feature container.
+
+- Usage:
+  ```
+  config feature autorestart <feature_name> (enabled | disabled)
+  ```
+
+- Example:
+  ```
+  admin@sonic:~$ sudo config feature autorestart bgp disabled
+  ``` 
+NOTE: If the existing state or auto-restart value for a feature is "always_enabled" then config
+commands are don't care and will not update state/auto-restart value.
+
+Go Back To [Beginning of the document](#) or [Beginning of this section](#feature)
 
 ## Update Device Hostname Configuration Commands
 

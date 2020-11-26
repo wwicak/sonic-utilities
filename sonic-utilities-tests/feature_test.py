@@ -22,22 +22,22 @@ show.config_db = config_db
 config.config_db = config_db
 
 show_feature_status_output="""\
-Feature     State     AutoRestart
-----------  --------  -------------
-bgp         enabled   enabled
-database    enabled   disabled
-dhcp_relay  enabled   enabled
-lldp        enabled   enabled
-nat         enabled   enabled
-pmon        enabled   enabled
-radv        enabled   enabled
-restapi     disabled  enabled
-sflow       disabled  enabled
-snmp        enabled   enabled
-swss        enabled   enabled
-syncd       enabled   enabled
-teamd       enabled   enabled
-telemetry   enabled   enabled
+Feature     State           AutoRestart
+----------  --------------  --------------
+bgp         enabled         enabled
+database    always_enabled  always_enabled
+dhcp_relay  enabled         enabled
+lldp        enabled         enabled
+nat         enabled         enabled
+pmon        enabled         enabled
+radv        enabled         enabled
+restapi     disabled        enabled
+sflow       disabled        enabled
+snmp        enabled         enabled
+swss        enabled         enabled
+syncd       enabled         enabled
+teamd       enabled         enabled
+telemetry   enabled         enabled
 """
 
 show_feature_bgp_status_output="""\
@@ -54,9 +54,9 @@ bgp        disabled  enabled
 
 show_feature_autorestart_output="""\
 Feature     AutoRestart
-----------  -------------
+----------  --------------
 bgp         enabled
-database    disabled
+database    always_enabled
 dhcp_relay  enabled
 lldp        enabled
 nat         enabled
@@ -82,6 +82,18 @@ show_feature_bgp_disabled_autorestart_output="""\
 Feature    AutoRestart
 ---------  -------------
 bgp        disabled
+"""
+
+show_feature_database_always_enabled_state_output="""\
+Feature    State           AutoRestart
+---------  --------------  --------------
+database   always_enabled  always_enabled
+"""
+
+show_feature_database_always_enabled_autorestart_output="""\
+Feature    AutoRestart
+---------  --------------
+database   always_enabled
 """
 
 class TestFeature(object):
@@ -154,6 +166,42 @@ class TestFeature(object):
         print(result.output)
         assert result.exit_code == 0
         assert result.output == show_feature_bgp_disabled_autorestart_output
+
+    def test_config_database_feature_state(self):
+        runner = CliRunner()
+        result = runner.invoke(config.config.commands["feature"].commands["state"], ["database", "disabled"])
+        print(result.exit_code)
+        print(result.output)
+        result = runner.invoke(show.cli.commands["feature"].commands["status"], ["database"])
+        print(result.output)
+        assert result.exit_code == 0
+        assert result.output == show_feature_database_always_enabled_state_output
+        result = runner.invoke(config.config.commands["feature"].commands["state"], ["database", "enabled"])
+        print(result.exit_code)
+        print(result.output)
+        result = runner.invoke(show.cli.commands["feature"].commands["status"], ["database"])
+        print(result.output)
+        assert result.exit_code == 0
+        assert result.output == show_feature_database_always_enabled_state_output
+    
+    def test_config_database_feature_autorestart(self):
+        runner = CliRunner()
+        result = runner.invoke(config.config.commands["feature"].commands["autorestart"], ["database", "disabled"])
+        print(result.exit_code)
+        print(result.output)
+        result = runner.invoke(show.cli.commands["feature"].commands["autorestart"], ["database"])
+        print(result.output)
+        assert result.exit_code == 0
+        assert result.output == show_feature_database_always_enabled_autorestart_output
+        result = runner.invoke(config.config.commands["feature"].commands["autorestart"], ["database", "enabled"])
+        print(result.exit_code)
+        print(result.output)
+        result = runner.invoke(show.cli.commands["feature"].commands["autorestart"], ["database"])
+        print(result.output)
+        assert result.exit_code == 0
+        assert result.output == show_feature_database_always_enabled_autorestart_output
+
+
 
     def test_config_unknown_feature(self):
         runner = CliRunner()
