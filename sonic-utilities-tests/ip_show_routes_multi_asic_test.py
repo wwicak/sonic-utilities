@@ -1,4 +1,5 @@
 import os
+import imp
 
 import pytest
 
@@ -16,6 +17,7 @@ class TestMultiAiscShowIpRouteDisplayAllCommands(object):
         os.environ["UTILITIES_UNIT_TESTING"] = "2"
         os.environ["UTILITIES_UNIT_TESTING_TOPOLOGY"] = "multi_asic"
         import mock_tables.mock_multi_asic_3_asics
+        imp.reload(mock_tables.mock_multi_asic_3_asics)
         mock_tables.dbconnector.load_namespace_config()
 
     @pytest.mark.parametrize('setup_multi_asic_bgp_instance',
@@ -223,9 +225,5 @@ class TestMultiAiscShowIpRouteDisplayAllCommands(object):
         os.environ["PATH"] = os.pathsep.join(os.environ["PATH"].split(os.pathsep)[:-1])
         os.environ["UTILITIES_UNIT_TESTING"] = "0"
         os.environ["UTILITIES_UNIT_TESTING_TOPOLOGY"] = ""
-        import imp
-        from sonic_py_common import multi_asic
-        imp.reload(multi_asic)
         import mock_tables.mock_single_asic
-        import mock_tables.dbconnector
-        mock_tables.dbconnector.load_namespace_config()
+        imp.reload(mock_tables.mock_single_asic)

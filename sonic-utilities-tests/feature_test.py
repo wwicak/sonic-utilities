@@ -1,9 +1,12 @@
+import imp
 import os
 import sys
 
 import mock
 from click.testing import CliRunner
 from swsssdk import ConfigDBConnector
+from utilities_common import constants
+from utilities_common.multi_asic import get_multi_asic_cfgdb
 
 test_path = os.path.dirname(os.path.abspath(__file__))
 modules_path = os.path.dirname(test_path)
@@ -15,11 +18,9 @@ import config.main as config
 config.asic_type = mock.MagicMock(return_value = "broadcom")
 config._get_device_type = mock.MagicMock(return_value = "ToRRouter")
 
-config_db = ConfigDBConnector()
-config_db.connect()
+config.multi_asic_cfgdb = get_multi_asic_cfgdb()
+show.config_db = config.multi_asic_cfgdb[constants.DEFAULT_NAMESPACE]
 
-show.config_db = config_db
-config.config_db = config_db
 
 show_feature_status_output="""\
 Feature     State           AutoRestart
@@ -94,6 +95,12 @@ show_feature_database_always_enabled_autorestart_output="""\
 Feature    AutoRestart
 ---------  --------------
 database   always_enabled
+"""
+config_feature_bgp_inconsistent_state_output="""\
+Feature 'bgp' state is not consistent across namespaces
+"""
+config_feature_bgp_inconsistent_autorestart_output="""\
+Feature 'bgp' auto-restart is not consistent across namespaces
 """
 
 class TestFeature(object):
@@ -212,3 +219,102 @@ class TestFeature(object):
     @classmethod
     def teardown_class(cls):
         print("TEARDOWN")
+
+class TestFeatureMultiAsic(object):
+    @classmethod
+    def setup_class(cls):
+        print("SETUP")
+    
+    def test_config_bgp_feature_inconsistent_state(self):
+        import mock_tables.dbconnector
+        import mock_tables.mock_multi_asic_3_asics
+        imp.reload(mock_tables.mock_multi_asic_3_asics)
+        mock_tables.dbconnector.load_namespace_config()
+        config.multi_asic_cfgdb = get_multi_asic_cfgdb()
+        show.config_db = config.multi_asic_cfgdb[constants.DEFAULT_NAMESPACE]
+        runner = CliRunner()
+        result = runner.invoke(config.config.commands["feature"].commands["state"], ["bgp", "disabled"])
+        print(result.exit_code)
+        print(result.output)
+        assert result.exit_code == 1
+        assert result.output == config_feature_bgp_inconsistent_state_output
+        result = runner.invoke(config.config.commands["feature"].commands["state"], ["bgp", "enabled"])
+        print(result.exit_code)
+        print(result.output)
+        assert result.exit_code == 1
+        assert result.output == config_feature_bgp_inconsistent_state_output
+
+    def test_config_bgp_feature_inconsistent_autorestart(self):
+        import mock_tables.dbconnector
+        import mock_tables.mock_multi_asic_3_asics
+        imp.reload(mock_tables.mock_multi_asic_3_asics)
+        mock_tables.dbconnector.load_namespace_config()
+        config.multi_asic_cfgdb = get_multi_asic_cfgdb()
+        show.config_db = config.multi_asic_cfgdb[constants.DEFAULT_NAMESPACE]
+        runner = CliRunner()
+        result = runner.invoke(config.config.commands["feature"].commands["autorestart"], ["bgp", "disabled"])
+        print(result.exit_code)
+        print(result.output)
+        assert result.exit_code == 1
+        assert result.output == config_feature_bgp_inconsistent_autorestart_output
+        result = runner.invoke(config.config.commands["feature"].commands["autorestart"], ["bgp", "enabled"])
+        print(result.exit_code)
+        print(result.output)
+        assert result.exit_code == 1
+        assert result.output == config_feature_bgp_inconsistent_autorestart_output
+
+    def test_config_bgp_feature_consistent_state(self):
+        import mock_tables.dbconnector
+        import mock_tables.mock_multi_asic
+        imp.reload(mock_tables.mock_multi_asic)
+        mock_tables.dbconnector.load_namespace_config()
+        config.multi_asic_cfgdb = get_multi_asic_cfgdb()
+        show.config_db = config.multi_asic_cfgdb[constants.DEFAULT_NAMESPACE]
+        runner = CliRunner()
+        result = runner.invoke(config.config.commands["feature"].commands["state"], ["bgp", "disabled"])
+        print(result.exit_code)
+        assert result.exit_code == 0
+        result = runner.invoke(show.cli.commands["feature"].commands["status"], ["bgp"])
+        print(result.output)
+        assert result.exit_code == 0
+        assert result.output == show_feature_bgp_disabled_status_output
+        result = runner.invoke(config.config.commands["feature"].commands["state"], ["bgp", "enabled"])
+        print(result.exit_code)
+        print(result.output)
+        assert result.exit_code == 0
+        result = runner.invoke(show.cli.commands["feature"].commands["status"], ["bgp"])
+        print(result.output)
+        assert result.exit_code == 0
+        assert result.output == show_feature_bgp_status_output
+
+    def test_config_bgp_feature_consistent_autorestart(self):
+        import mock_tables.dbconnector
+        import mock_tables.mock_multi_asic
+        imp.reload(mock_tables.mock_multi_asic)
+        mock_tables.dbconnector.load_namespace_config()
+        config.multi_asic_cfgdb = get_multi_asic_cfgdb()
+        show.config_db = config.multi_asic_cfgdb[constants.DEFAULT_NAMESPACE]
+        runner = CliRunner()
+        result = runner.invoke(config.config.commands["feature"].commands["autorestart"], ["bgp", "disabled"])
+        print(result.exit_code)
+        assert result.exit_code == 0
+        result = runner.invoke(show.cli.commands["feature"].commands["autorestart"], ["bgp"])
+        print(result.output)
+        print(result.exit_code)
+        assert result.exit_code == 0
+        assert result.output == show_feature_bgp_disabled_autorestart_output
+        result = runner.invoke(config.config.commands["feature"].commands["autorestart"], ["bgp", "enabled"])
+        print(result.exit_code)
+        assert result.exit_code == 0
+        result = runner.invoke(show.cli.commands["feature"].commands["autorestart"], ["bgp"])
+        print(result.output)
+        print(result.exit_code)
+        assert result.exit_code == 0
+        assert result.output == show_feature_bgp_autorestart_output
+ 
+ 
+    @classmethod
+    def teardown_class(cls):
+        print("TEARDOWN")
+        import mock_tables.mock_single_asic
+        imp.reload(mock_tables.mock_single_asic)

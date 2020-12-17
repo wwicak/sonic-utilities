@@ -16,6 +16,7 @@ from minigraph import parse_device_desc_xml
 from sonic_py_common import device_info, multi_asic, logger
 from sonic_py_common.interface import get_interface_table_name, get_port_table_name
 from swsssdk import ConfigDBConnector, SonicV2Connector, SonicDBConfig
+from utilities_common.multi_asic import get_multi_asic_cfgdb
 
 import aaa
 import mlnx
@@ -44,7 +45,7 @@ log = logger.Logger(SYSLOG_IDENTIFIER)
 
 asic_type = None
 config_db = None
-
+multi_asic_cfgdb = None
 
 class AbbreviationGroup(click.Group):
     """This subclass of click.Group supports abbreviated subgroup/subcommand names
@@ -668,6 +669,11 @@ def config():
 
     config_db = ConfigDBConnector()
     config_db.connect()
+
+    global multi_asic_cfgdb
+
+    multi_asic_cfgdb = get_multi_asic_cfgdb()
+
 
 config.add_command(aaa.aaa)
 config.add_command(aaa.tacacs)
@@ -3294,18 +3300,26 @@ def feature():
 @click.argument('state', metavar='<state>', required=True, type=click.Choice(["enabled", "disabled"]))
 def feature_state(name, state):
     """Enable/disable a feature"""
-    entry_data = config_db.get_entry('FEATURE', name)
+    entry_data_set = set()
+    cfgdb_clients = multi_asic_cfgdb 
 
-    if not entry_data:
-        click.echo("Feature '{}' doesn't exist".format(name))
+    for ns, cfgdb in cfgdb_clients.items():
+        entry_data = cfgdb.get_entry('FEATURE', name)
+        if not entry_data:
+            click.echo("Feature '{}' doesn't exist".format(name))
+            sys.exit(1)
+        entry_data_set.add(entry_data['state'])
+
+    if len(entry_data_set) > 1:
+        click.echo("Feature '{}' state is not consistent across namespaces".format(name))
         sys.exit(1)
 
     if entry_data['state'] == "always_enabled":
         click.echo("Feature '{}' state is always enabled and can not be modified".format(name))
         return
-    
-    config_db.mod_entry('FEATURE', name, {'state': state})
 
+    for ns, cfgdb in cfgdb_clients.items():
+        cfgdb.mod_entry('FEATURE', name, {'state': state})
 #
 # 'autorestart' command ('config feature autorestart ...')
 #
@@ -3314,16 +3328,26 @@ def feature_state(name, state):
 @click.argument('autorestart', metavar='<autorestart>', required=True, type=click.Choice(["enabled", "disabled"]))
 def feature_autorestart(name, autorestart):
     """Enable/disable autorestart of a feature"""
-    entry_data = config_db.get_entry('FEATURE', name)
-    if not entry_data:
-        click.echo("Feature '{}' doesn't exist".format(name))
+    entry_data_set = set()
+    cfgdb_clients = multi_asic_cfgdb 
+
+    for ns, cfgdb in cfgdb_clients.items():
+        entry_data = cfgdb.get_entry('FEATURE', name)
+        if not entry_data:
+            click.echo("Feature '{}' doesn't exist".format(name))
+            sys.exit(1)
+        entry_data_set.add(entry_data['auto_restart'])
+
+    if len(entry_data_set) > 1:
+        click.echo("Feature '{}' auto-restart is not consistent across namespaces".format(name))
         sys.exit(1)
 
     if entry_data['auto_restart'] == "always_enabled":
         click.echo("Feature '{}' auto-restart is always enabled and can not be modified".format(name))
         return
- 
-    config_db.mod_entry('FEATURE', name, {'auto_restart': autorestart})
+
+    for ns, cfgdb in cfgdb_clients.items():
+        cfgdb.mod_entry('FEATURE', name, {'auto_restart': autorestart})
 
 if __name__ == '__main__':
     config()

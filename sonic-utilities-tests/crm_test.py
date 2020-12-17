@@ -1,3 +1,4 @@
+import imp
 import os
 import sys
 
@@ -1345,3 +1346,4 @@ class TestCrmMultiAsic(object):
         os.environ["UTILITIES_UNIT_TESTING"] = "0"
         os.environ["UTILITIES_UNIT_TESTING_TOPOLOGY"] = ""
         import mock_tables.mock_single_asic
+        imp.reload(mock_tables.mock_single_asic)

@@ -136,3 +136,12 @@ def multi_asic_args(parser=None):
     parser.add_argument('-n', '--namespace', default=None,
                         help='Display interfaces for specific namespace')
     return parser
+
+def get_multi_asic_cfgdb():
+        cfgdb = {}
+        ns_list = { constants.DEFAULT_NAMESPACE }
+        ns_list.update(multi_asic.get_namespace_list())
+        for ns in ns_list:
+            cfgdb[ns] = multi_asic.connect_config_db_for_ns(ns)
+
+        return cfgdb
