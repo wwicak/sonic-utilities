@@ -1,11 +1,23 @@
 #!/usr/bin/env python
 
+import os
 import argparse
 import sys
 import traceback
 
 from sonic_py_common import device_info, logger
 from swsssdk import ConfigDBConnector, SonicDBConfig, SonicV2Connector
+
+# mock the redis for unit test purposes #
+try:
+    if os.environ["UTILITIES_UNIT_TESTING"] == "2":
+        modules_path = os.path.join(os.path.dirname(__file__), "..")
+        tests_path = os.path.join(modules_path, "tests")
+        mocked_db_path = os.path.join(tests_path, "db_migrator_input")
+        sys.path.insert(0, modules_path)
+        sys.path.insert(0, tests_path)
+except KeyError:
+    pass
 
 
 SYSLOG_IDENTIFIER = 'db_migrator'
@@ -205,9 +217,24 @@ class DBMigrator():
 
     def version_1_0_4(self):
         """
-        Current latest version. Nothing to do here.
+        Version 1_0_4.
         """
         log.log_info('Handling version_1_0_4')
+
+        # Check ASIC type, if Mellanox platform then need DB migration
+        if self.asic_type == "mellanox":
+            if self.mellanox_buffer_migrator.mlnx_migrate_buffer_pool_size('version_1_0_4', 'version_1_0_5') and self.mellanox_buffer_migrator.mlnx_migrate_buffer_profile('version_1_0_4', 'version_1_0_5'):
+                self.set_version('version_1_0_5')
+        else:
+            self.set_version('version_1_0_5')
+
+        return 'version_1_0_5'
+
+    def version_1_0_5(self):
+        """
+        Current latest version. Nothing to do here.
+        """
+        log.log_info('Handling version_1_0_5')
 
         return None
 
