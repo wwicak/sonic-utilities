@@ -125,6 +125,19 @@
             "services@": "SSH",
             "type": "CTRLPLANE"
     },
+    "VLAN|Vlan1000": {
+        "dhcp_servers@": "192.0.0.1,192.0.0.2,192.0.0.3,192.0.0.4",
+        "vlanid": "1000"
+    },
+    "VLAN|Vlan3000": {
+        "vlanid": "3000"
+    },
+    "VLAN_MEMBER|Vlan1000|Ethernet20": {
+        "tagging_mode": "untagged"
+    },
+    "VLAN_MEMBER|Vlan1000|Ethernet100": {
+        "tagging_mode": "untagged"
+    },
     "DEBUG_COUNTER|DEBUG_0": {
         "type": "PORT_INGRESS_DROPS"
     },
