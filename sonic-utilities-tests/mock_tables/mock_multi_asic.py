@@ -81,7 +81,6 @@ def mock_multi_asic_get_ip_intf_addr_from_ns(namespace, iface):
         pass
     return ipaddresses
 
-
 multi_asic.get_num_asics = mock_get_num_asics
 multi_asic.is_multi_asic = mock_is_multi_asic
 multi_asic.get_namespace_list = mock_get_namespace_list
