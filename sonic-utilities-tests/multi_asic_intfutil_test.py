@@ -30,6 +30,12 @@ intf_status = """\
 PortChannel1002          N/A      80G   9100    N/A          N/A           routed      up       up              N/A         N/A
 """
 
+intf_status_Ethernet0 = """\
+  Interface        Lanes    Speed    MTU    FEC        Alias             Vlan    Oper    Admin             Type    Asym PFC
+-----------  -----------  -------  -----  -----  -----------  ---------------  ------  -------  ---------------  ----------
+  Ethernet0  33,34,35,36      40G   9100    N/A  Ethernet1/1  PortChannel1002      up       up  QSFP28 or later         off
+"""
+
 intf_status_asic0 = """\
       Interface        Lanes    Speed    MTU    FEC        Alias             Vlan    Oper    Admin             Type    Asym PFC
 ---------------  -----------  -------  -----  -----  -----------  ---------------  ------  -------  ---------------  ----------
