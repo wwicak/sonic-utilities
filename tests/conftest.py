@@ -9,7 +9,6 @@ from swsssdk import ConfigDBConnector
 
 from .mock_tables import dbconnector
 from . import show_ip_route_common
-import utilities_common.constants as constantsn
 
 test_path = os.path.dirname(os.path.abspath(__file__))
 modules_path = os.path.dirname(test_path)
@@ -119,7 +118,7 @@ def setup_single_bgp_instance(request):
         bgp_mocked_json = os.path.join(
             test_path, 'mock_tables', 'dummy.json')
 
-    def mock_run_bgp_command(vtysh_cmd, bgp_namespace, vtysh_shell_cmd=constants.RVTYSH_COMMAND):
+    def mock_run_bgp_command(vtysh_cmd, bgp_namespace):
         if os.path.isfile(bgp_mocked_json):
             with open(bgp_mocked_json) as json_data:
                 mock_frr_data = json_data.read()
@@ -179,7 +178,7 @@ def setup_multi_asic_bgp_instance(request):
         m_asic_json_file = os.path.join(
             test_path, 'mock_tables', 'dummy.json')
 
-    def mock_run_bgp_command(vtysh_cmd, bgp_namespace, vtysh_shell_cmd=constants.RVTYSH_COMMAND):
+    def mock_run_bgp_command(vtysh_cmd, bgp_namespace):
         bgp_mocked_json = os.path.join(
             test_path, 'mock_tables', bgp_namespace, m_asic_json_file)
         if os.path.isfile(bgp_mocked_json):

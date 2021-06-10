@@ -14,7 +14,6 @@ from swsssdk import ConfigDBConnector
 from swsscommon.swsscommon import SonicV2Connector
 from tabulate import tabulate
 from utilities_common.db import Db
-import utilities_common.constants as constants
 
 from . import acl
 from . import bgp_common
@@ -709,7 +708,7 @@ def mac(vlan, port, verbose):
 @click.option('--verbose', is_flag=True, help="Enable verbose output")
 def route_map(route_map_name, verbose):
     """show route-map"""
-    cmd = 'sudo {} -c "show route-map'.format(constants.RVTYSH_COMMAND)
+    cmd = 'sudo vtysh -c "show route-map'
     if route_map_name is not None:
         cmd += ' {}'.format(route_map_name)
     cmd += '"'
@@ -886,7 +885,7 @@ def route(args, namespace, display, verbose):
 @click.option('--verbose', is_flag=True, help="Enable verbose output")
 def prefix_list(prefix_list_name, verbose):
     """show ip prefix-list"""
-    cmd = 'sudo {} -c "show ip prefix-list'.format(constants.RVTYSH_COMMAND)
+    cmd = 'sudo vtysh -c "show ip prefix-list'
     if prefix_list_name is not None:
         cmd += ' {}'.format(prefix_list_name)
     cmd += '"'
@@ -898,7 +897,7 @@ def prefix_list(prefix_list_name, verbose):
 @click.option('--verbose', is_flag=True, help="Enable verbose output")
 def protocol(verbose):
     """Show IPv4 protocol information"""
-    cmd = 'sudo {} -c "show ip protocol"'.format(constants.RVTYSH_COMMAND)
+    cmd = 'sudo vtysh -c "show ip protocol"'
     run_command(cmd, display_cmd=verbose)
 
 
@@ -921,7 +920,7 @@ def ipv6():
 @click.option('--verbose', is_flag=True, help="Enable verbose output")
 def prefix_list(prefix_list_name, verbose):
     """show ip prefix-list"""
-    cmd = 'sudo {} -c "show ipv6 prefix-list'.format(constants.RVTYSH_COMMAND)
+    cmd = 'sudo vtysh -c "show ipv6 prefix-list'
     if prefix_list_name is not None:
         cmd += ' {}'.format(prefix_list_name)
     cmd += '"'
@@ -1002,7 +1001,7 @@ def route(args, namespace, display, verbose):
 @click.option('--verbose', is_flag=True, help="Enable verbose output")
 def protocol(verbose):
     """Show IPv6 protocol information"""
-    cmd = 'sudo {} -c "show ipv6 protocol"'.format(constants.RVTYSH_COMMAND)
+    cmd = 'sudo vtysh -c "show ipv6 protocol"'
     run_command(cmd, display_cmd=verbose)
 
 #
@@ -1229,7 +1228,7 @@ def ports(portname, verbose):
 @click.option('--verbose', is_flag=True, help="Enable verbose output")
 def bgp(verbose):
     """Show BGP running configuration"""
-    cmd = 'sudo {} -c "show running-config"'.format(constants.RVTYSH_COMMAND)
+    cmd = 'sudo vtysh -c "show running-config"'
     run_command(cmd, display_cmd=verbose)
 
 
