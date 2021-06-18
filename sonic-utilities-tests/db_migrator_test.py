@@ -3,6 +3,8 @@ import os
 import pytest
 import sys
 
+from deepdiff import DeepDiff
+
 from sonic_py_common import device_info
 
 import mock_tables.dbconnector
@@ -107,3 +109,37 @@ class TestMellanoxBufferMigrator(object):
                 assert dbmgtr.mellanox_buffer_migrator.is_buffer_config_default
 
         self.clear_dedicated_mock_dbs()
+
+
+class TestInitConfigMigrator(object):
+    @classmethod
+    def setup_class(cls):
+        os.environ['UTILITIES_UNIT_TESTING'] = "2"
+
+    @classmethod
+    def teardown_class(cls):
+        os.environ['UTILITIES_UNIT_TESTING'] = "0"
+        mock_tables.dbconnector.dedicated_dbs['CONFIG_DB'] = None
+
+    def mock_dedicated_config_db(self, filename):
+        jsonfile = os.path.join(mock_db_path, 'config_db', filename)
+        mock_tables.dbconnector.dedicated_dbs['CONFIG_DB'] = jsonfile
+        db = Db()
+        return db
+
+    def test_init_config_feature_migration(self):
+        self.mock_dedicated_config_db('feature-input')
+
+        import db_migrator
+        dbmgtr = db_migrator.DBMigrator(None)
+        dbmgtr.migrate()
+        expected_db = self.mock_dedicated_config_db('feature-expected')
+
+        resulting_table = dbmgtr.configDB.get_table('FEATURE')
+        expected_table = expected_db.cfgdb.get_table('FEATURE')
+
+        diff = DeepDiff(resulting_table, expected_table, ignore_order=True)
+        assert not diff
+
+        assert not expected_db.cfgdb.get_table('CONTAINER_FEATURE')
+

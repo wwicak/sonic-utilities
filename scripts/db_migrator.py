@@ -9,18 +9,20 @@ import traceback
 from sonic_py_common import device_info, logger
 from swsssdk import ConfigDBConnector, SonicDBConfig, SonicV2Connector
 
+INIT_CFG_FILE = '/etc/sonic/init_cfg.json'
+
 # mock the redis for unit test purposes #
 try:
     if os.environ["UTILITIES_UNIT_TESTING"] == "2":
         modules_path = os.path.join(os.path.dirname(__file__), "..")
-        tests_path = os.path.join(modules_path, "tests")
+        tests_path = os.path.join(modules_path, "sonic-utilities-tests")
         mocked_db_path = os.path.join(tests_path, "db_migrator_input")
         sys.path.insert(0, modules_path)
         sys.path.insert(0, tests_path)
+        INIT_CFG_FILE = os.path.join(mocked_db_path, "init_cfg.json")
 except KeyError:
     pass
 
-INIT_CFG_FILE = '/etc/sonic/init_cfg.json'
 SYSLOG_IDENTIFIER = 'db_migrator'
 
 # Global logger instance
@@ -154,6 +156,22 @@ class DBMigrator():
             self.appDB.set(self.appDB.APPL_DB, table, 'NULL', 'NULL')
             if_db.append(if_name)
 
+    def migrate_feature_table(self):
+        '''
+        Combine CONTAINER_FEATURE and FEATURE tables into FEATURE table.
+        '''
+        feature_table = self.configDB.get_table('FEATURE')
+        for feature, config in feature_table.items():
+            if 'status' in config:
+                state = config.pop('status', 'disabled')
+                config['state'] = state
+                self.configDB.set_entry('FEATURE', feature, config)
+
+        container_feature_table = self.configDB.get_table('CONTAINER_FEATURE')
+        for feature, config in container_feature_table.items():
+            self.configDB.mod_entry('FEATURE', feature, config)
+            self.configDB.set_entry('CONTAINER_FEATURE', feature, None)
+
     def version_unknown(self):
         """
         version_unknown tracks all SONiC versions that doesn't have a version
@@ -206,6 +224,8 @@ class DBMigrator():
         Version 1_0_3.
         """
         log.log_info('Handling version_1_0_3')
+
+        self.migrate_feature_table()
 
         # Check ASIC type, if Mellanox platform then need DB migration
         if self.asic_type == "mellanox":
@@ -261,14 +281,12 @@ class DBMigrator():
 
         return 'version_unknown'
 
-
     def set_version(self, version=None):
         if not version:
             version = self.CURRENT_VERSION
         log.log_info('Setting version to ' + version)
         entry = { self.TABLE_FIELD : version }
         self.configDB.set_entry(self.TABLE_NAME, self.TABLE_KEY, entry)
-
 
     def common_migration_ops(self):
         try:
@@ -278,15 +296,17 @@ class DBMigrator():
             raise Exception(str(e))
 
         for init_cfg_table, table_val in init_db.items():
-            data = self.configDB.get_table(init_cfg_table)
-            if data:
-                # Ignore overriding the values that pre-exist in configDB
-                continue
             log.log_info("Migrating table {} from INIT_CFG to config_db".format(init_cfg_table))
-            # Update all tables that do not exist in configDB but are present in INIT_CFG
-            for init_table_key, init_table_val in table_val.items():
-                self.configDB.set_entry(init_cfg_table, init_table_key, init_table_val)
+            for key in table_val:
+                curr_cfg = self.configDB.get_entry(init_cfg_table, key)
+                init_cfg = table_val[key]
 
+                # Override init config with current config.
+                # This will leave new fields from init_config
+                # in new_config, but not override existing configuration.
+                new_cfg = init_cfg.copy()
+                new_cfg.update(curr_cfg)
+                self.configDB.set_entry(init_cfg_table, key, new_cfg)
 
     def migrate(self):
         version = self.get_version()
