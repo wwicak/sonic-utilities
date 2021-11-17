@@ -203,9 +203,15 @@ def watermark():
     """ Watermark counter commands """
 
 @watermark.command()
-@click.argument('poll_interval', type=click.IntRange(1000, 30000))
+@click.argument('poll_interval', type=click.IntRange(1000, 60000))
 def interval(poll_interval):
-    """ Set watermark counter query interval for both queue and PG watermarks """
+    """ 
+    Set watermark counter query interval for both queue and PG watermarks 
+    This counter group causes high CPU usage when polled,
+    increase the interval up limit to 60 seconds.
+    This is a short term solution and
+    should be changed once the performance is enhanced
+    """
     configdb = ConfigDBConnector()
     configdb.connect()
     queue_wm_info = {}
