@@ -22,7 +22,7 @@ def queue():
     """ Queue counter commands """
 
 @queue.command()
-@click.argument('poll_interval', type=click.IntRange(100, 30000))
+@click.argument('poll_interval', type=click.IntRange(100, 60000))
 def interval(poll_interval):
     """ Set queue counter query interval """
     configdb = ConfigDBConnector()
@@ -56,7 +56,7 @@ def port():
     """ Queue counter commands """
 
 @port.command()
-@click.argument('poll_interval', type=click.IntRange(100, 30000))
+@click.argument('poll_interval', type=click.IntRange(100, 60000))
 def interval(poll_interval):
     """ Set queue counter query interval """
     configdb = ConfigDBConnector()
@@ -133,7 +133,7 @@ def pg_drop(ctx):
     ctx.obj.connect()
 
 @pg_drop.command()
-@click.argument('poll_interval', type=click.IntRange(1000, 30000))
+@click.argument('poll_interval', type=click.IntRange(1000, 60000))
 @click.pass_context
 def interval(ctx, poll_interval):
     """
@@ -253,7 +253,7 @@ def tunnel():
     """ Tunnel counter commands """
 
 @tunnel.command()
-@click.argument('poll_interval', type=click.IntRange(100, 30000))
+@click.argument('poll_interval', type=click.IntRange(100, 60000))
 def interval(poll_interval):
     """ Set tunnel counter query interval """
     configdb = ConfigDBConnector()
