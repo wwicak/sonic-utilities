@@ -394,7 +394,9 @@ class PathAddressing:
         sy = sonic_yang.SonicYang(YANG_DIR)
         sy.loadYangModel()
 
-        sy.loadData(config)
+        tmp_config = copy.deepcopy(config)
+
+        sy.loadData(tmp_config)
 
         xpath = self.convert_path_to_xpath(path, config, sy)
 
