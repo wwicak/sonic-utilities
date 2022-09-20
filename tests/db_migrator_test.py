@@ -410,3 +410,28 @@ class TestGlobalDscpToTcMapMigrator(object):
         resulting_table = dbmgtr_mlnx.configDB.get_table('PORT_QOS_MAP')
         assert resulting_table == {}
 
+class TestMirrorPolicerColorMigrate(object):
+    @classmethod
+    def setup_class(cls):
+        os.environ['UTILITIES_UNIT_TESTING'] = "2"
+
+    @classmethod
+    def teardown_class(cls):
+        os.environ['UTILITIES_UNIT_TESTING'] = "0"
+        dbconnector.dedicated_dbs['CONFIG_DB'] = None
+
+    def test_migrator_check(self):
+        dbconnector.dedicated_dbs['CONFIG_DB'] = os.path.join(mock_db_path, 'config_db', 'mirror_policer_cfg')
+        import db_migrator
+        dbmgtr_mlnx = db_migrator.DBMigrator(None)
+        dbmgtr_mlnx.asic_type = "mellanox"
+        dbmgtr_mlnx.migrate()
+        assert dbmgtr_mlnx.configDB.get_entry('POLICER', 'policer_dscp').get('color') == 'blind'
+        assert dbmgtr_mlnx.configDB.get_entry('POLICER', 'policer_random').get('color') == 'aware'
+
+        dbmgtr = db_migrator.DBMigrator(None)
+        dbmgtr.asic_type = "broadcom"
+        dbmgtr.hwsku = "vs"
+        dbmgtr.migrate()
+        assert dbmgtr.configDB.get_entry('POLICER', 'policer_dscp').get('color') == 'aware'
+        assert dbmgtr.configDB.get_entry('POLICER', 'policer_random').get('color') == 'aware'

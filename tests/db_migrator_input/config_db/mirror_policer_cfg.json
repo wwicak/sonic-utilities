@@ -1,0 +1,35 @@
+{
+    "VERSIONS|DATABASE": {
+        "VERSION": "version_3_0_4"
+    },
+    "ACL_TABLE|EVERFLOW_DSCP": {
+            "stage": "ingress", 
+            "type": "MIRROR_DSCP",  
+            "ports@": "Ethernet0",
+            "policy_desc": "EVERFLOW_DSCP"
+    },
+    "MIRROR_SESSION|mirror_session_dscp": {
+        "dscp": "5",
+        "dst_ip": "1.1.1.1",
+        "policer": "policer_dscp",
+        "src_ip": "2.2.2.2",
+        "ttl": "32",
+        "type": "ERSPAN"
+    },
+    "POLICER|policer_dscp": {
+        "meter_type": "bytes",
+        "mode": "sr_tcm",
+        "cir": "12500000",
+        "cbs": "12500000",
+        "color": "aware",
+        "red_packet_action": "drop"
+    },
+    "POLICER|policer_random": {
+        "meter_type": "bytes",
+        "mode": "sr_tcm",
+        "cir": "12500000",
+        "cbs": "12500000",
+        "color": "aware",
+        "red_packet_action": "drop"
+    }
+}
