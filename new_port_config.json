@@ -1,0 +1,10 @@
+{
+    "Ethernet0": {
+        "speed": "50000",
+        "lanes": "65,66"
+    },
+    "Ethernet2": {
+        "speed": "50000",
+        "lanes": "67,68"
+    }
+}
