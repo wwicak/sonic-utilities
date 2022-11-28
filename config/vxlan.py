@@ -93,7 +93,7 @@ def vxlan_evpn_nvo():
 def add_vxlan_evpn_nvo(db, nvo_name, vxlan_name):
     """Add NVO"""
     ctx = click.get_current_context()
-    config_db = validatedConfigDBConnector(db.cfgdb)
+    config_db = ValidatedConfigDBConnector(db.cfgdb)
     vxlan_keys = db.cfgdb.get_keys("VXLAN_EVPN_NVO|*")
     if not vxlan_keys:
       vxlan_count = 0
