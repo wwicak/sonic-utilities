@@ -1708,8 +1708,8 @@ class TestConfigCableLength(object):
     @patch("validated_config_db_connector.device_info.is_yang_config_validation_enabled", mock.Mock(return_value=True))
     @patch("config.validated_config_db_connector.ValidatedConfigDBConnector.validated_mod_entry", mock.Mock(side_effect=ValueError))
     @patch("config.main.ConfigDBConnector.get_entry", mock.Mock(return_value=None))
-    def test_add_loopback_with_invalid_name_valid_length_yang_validation(self):
-        config.ADHOC_VALIDATION = TRUE
+    def test_add_cablelength_with_invalid_name_valid_length_yang_validation(self):
+        config.ADHOC_VALIDATION = True
         runner = CliRunner()
         db = Db()
         obj = {'db':db.cfgdb}
@@ -1723,7 +1723,7 @@ class TestConfigCableLength(object):
     @patch("validated_config_db_connector.device_info.is_yang_config_validation_enabled", mock.Mock(return_value=True))
     @patch("config.validated_config_db_connector.ValidatedConfigDBConnector.validated_mod_entry", mock.Mock(side_effect=ValueError))
     @patch("config.main.ConfigDBConnector.get_entry", mock.Mock(return_value="Port Info"))
-    def test_add_loopback_with_invalid_name_valid_length_yang_validation(self):
+    def test_add_cablelength_with_invalid_name_valid_length_yang_validation(self):
         config.ADHOC_VALIDATION = TRUE
         runner = CliRunner()
         db = Db()
@@ -1738,8 +1738,8 @@ class TestConfigCableLength(object):
     @patch("validated_config_db_connector.device_info.is_yang_config_validation_enabled", mock.Mock(return_value=True))
     @patch("config.validated_config_db_connector.ValidatedConfigDBConnector.validated_mod_entry", mock.Mock(side_effect=ValueError))
     @patch("config.main.ConfigDBConnector.get_entry", mock.Mock(return_value="Port Info"))
-    def test_add_loopback_invalid_yang_validation(self):
-        config.ADHOC_VALIDATION = TRUE
+    def test_add_cablelength_invalid_yang_validation(self):
+        config.ADHOC_VALIDATION = True
         runner = CliRunner()
         db = Db()
         obj = {'db':db.cfgdb}
