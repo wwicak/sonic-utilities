@@ -3,11 +3,13 @@ import jsonpatch
 import os
 import traceback
 from unittest import mock
+from mock import patch
 
 from click.testing import CliRunner
 
 import config.main as config
 import show.main as show
+import config.validated_config_db_connector as validated_config_db_connector
 from utilities_common.db import Db
 
 test_path = os.path.dirname(os.path.abspath(__file__))
@@ -262,12 +264,27 @@ class TestConfigIP(object):
         print(result.exit_code, result.output)
         assert result.exit_code != 0
         assert result.output == INVALID_MGMT_VRF_MSG
-
+        
         result = runner.invoke(config.config.commands["vrf"].commands["add"], ["mgmt"], obj=obj)
         print(result.exit_code, result.output)
         result = runner.invoke(config.config.commands["interface"].commands["vrf"].commands["bind"], ["Ethernet64", "mgmt"], obj=obj)
         print(result.exit_code, result.output)
         assert result.exit_code == 0
+
+    @patch("config.validated_config_db_connector.ValidatedConfigDBConnector.validated_mod_entry", mock.Mock(return_value=True))
+    @patch("validated_config_db_connector.device_info.is_yang_config_validation_enabled", mock.Mock(side_effect=ValueError))
+    def test_intf_unknown_vrf_bind_yang_validation(self):
+        runner = CliRunner()
+        db = Db()
+        obj = {'config_db':db.cfgdb, 'namespace':db.db.namespace}
+        
+        result = runner.invoke(config.config.commands["vrf"].commands["add"], ["mgmt"], obj=obj)
+        print(result.exit_code)
+        assert result.exit_code != 0
+
+        result = runner.invoke(config.config.commands["vrf"].commands["del"], ["mgmt"], obj=obj)
+        print(result.exit_code)
+        assert result.exit_code != 0 
 
     @classmethod
     def teardown_class(cls):
