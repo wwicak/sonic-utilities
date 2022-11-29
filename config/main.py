@@ -5171,7 +5171,7 @@ def vrf(ctx):
 @click.pass_context
 def add_vrf(ctx, vrf_name):
     """Add vrf"""
-    config_db = ctx.obj['config_db']
+    config_db = ValidatedConfigDBConnector(ctx.obj['config_db'])
     if not vrf_name.startswith("Vrf") and not (vrf_name == 'mgmt') and not (vrf_name == 'management'):
         ctx.fail("'vrf_name' is not start with Vrf, mgmt or management!")
     if len(vrf_name) > 15:
@@ -5189,7 +5189,7 @@ def add_vrf(ctx, vrf_name):
 @click.pass_context
 def del_vrf(ctx, vrf_name):
     """Del vrf"""
-    config_db = ctx.obj['config_db']
+    config_db = ValidatedConfigDBConnector(ctx.obj['config_db'])
     if not vrf_name.startswith("Vrf") and not (vrf_name == 'mgmt') and not (vrf_name == 'management'):
         ctx.fail("'vrf_name' is not start with Vrf, mgmt or management!")
     if len(vrf_name) > 15:
