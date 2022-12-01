@@ -2929,7 +2929,6 @@ def warm_restart_bgp_eoiu(ctx, enable):
 def vrf_add_management_vrf(config_db):
     """Enable management vrf in config DB"""
 
-    config_db = ValidatedConfigDBConnector(config_db)
     entry = config_db.get_entry('MGMT_VRF_CONFIG', "vrf_global")
     if entry and entry['mgmtVrfEnabled'] == 'true' :
         click.echo("ManagementVRF is already Enabled.")
@@ -2944,7 +2943,6 @@ def vrf_add_management_vrf(config_db):
 def vrf_delete_management_vrf(config_db):
     """Disable management vrf in config DB"""
 
-    config_db = ValidatedConfigDBConnector(config_db)
     entry = config_db.get_entry('MGMT_VRF_CONFIG', "vrf_global")
     if not entry or entry['mgmtVrfEnabled'] == 'false' :
         click.echo("ManagementVRF is already Disabled.")
