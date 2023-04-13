@@ -1,11 +1,16 @@
 import imp
 import os
 import sys
+import mock
+import jsonpatch
 
 from click.testing import CliRunner
 from utilities_common.db import Db
+from mock import patch
+from jsonpointer import JsonPointerException
 
 import config.main as config
+import config.aaa as aaa
 import show.main as show
 
 test_path = os.path.dirname(os.path.abspath(__file__))
@@ -44,6 +49,16 @@ RADIUS global auth_type chap
 RADIUS global retransmit 3 (default)
 RADIUS global timeout 5 (default)
 RADIUS global passkey <EMPTY_STRING> (default)
+
+"""
+
+show_radius_global_nasip_source_ip_output="""\
+RADIUS global auth_type pap (default)
+RADIUS global retransmit 3 (default)
+RADIUS global timeout 5 (default)
+RADIUS global passkey <EMPTY_STRING> (default)
+RADIUS global nas_ip 1.1.1.1
+RADIUS global src_ip 2000::1
 
 """
 
@@ -191,4 +206,44 @@ class TestRadius(object):
         print(result.output)
         assert result.exit_code == 0
         assert result.output == show_radius_default_output
+
+    def test_config_radius_nasip_sourceip(self, get_cmd_module):
+        (config, show) = get_cmd_module
+        runner = CliRunner()
+        db = Db()
+        db.cfgdb.delete_table("RADIUS")
+        db.cfgdb.delete_table("RADIUS_SERVER")
+
+        result = runner.invoke(config.config.commands["radius"],\
+                               ["nasip", "1.1.1.1"])
+        print(result.exit_code)
+        print(result.output)
+        assert result.exit_code == 0
+
+        result = runner.invoke(config.config.commands["radius"],\
+                               ["sourceip", "2000::1"])
+        print(result.exit_code)
+        print(result.output)
+        assert result.exit_code == 0
+
+        result = runner.invoke(show.cli.commands["radius"], [])
+        print(result.exit_code)
+        print(result.output)
+        assert result.output == show_radius_default_output
+
+        db.cfgdb.mod_entry("RADIUS", "global", \
+            {'auth_type' : 'pap (default)', \
+             'retransmit': '3 (default)', \
+             'timeout'   : '5 (default)', \
+             'passkey'   : '<EMPTY_STRING> (default)', \
+             'nas_ip'    : '1.1.1.1', \
+             'src_ip'    : '2000::1', \
+            } \
+        )
+
+        result = runner.invoke(show.cli.commands["radius"], [], obj=db)
+        print(result.exit_code)
+        print(result.output)
+        assert result.exit_code == 0
+        assert result.output == show_radius_global_nasip_source_ip_output
 
