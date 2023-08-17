@@ -45,7 +45,7 @@ class DBMigrator():
                      none-zero values.
               build: sequentially increase within a minor version domain.
         """
-        self.CURRENT_VERSION = 'version_4_0_2'
+        self.CURRENT_VERSION = 'version_4_0_3'
 
         self.TABLE_NAME      = 'VERSIONS'
         self.TABLE_KEY       = 'DATABASE'
@@ -631,6 +631,20 @@ class DBMigrator():
                 # Set new cable length values
                 self.configDB.set(self.configDB.CONFIG_DB, "CABLE_LENGTH|AZURE", intf, EDGEZONE_AGG_CABLE_LENGTH)
 
+    def migrate_config_db_flex_counter_delay_status(self):
+        """
+        Migrate "FLEX_COUNTER_TABLE|*": { "value": { "FLEX_COUNTER_DELAY_STATUS": "false" } }
+        Set FLEX_COUNTER_DELAY_STATUS true in case of fast-reboot
+        """
+
+        flex_counter_objects = self.configDB.get_keys('FLEX_COUNTER_TABLE')
+        for obj in flex_counter_objects:
+            flex_counter = self.configDB.get_entry('FLEX_COUNTER_TABLE', obj)
+            delay_status = flex_counter.get('FLEX_COUNTER_DELAY_STATUS')
+            if delay_status is None or delay_status == 'false':
+                flex_counter['FLEX_COUNTER_DELAY_STATUS'] = 'true'
+                self.configDB.mod_entry('FLEX_COUNTER_TABLE', obj, flex_counter)
+
     def version_unknown(self):
         """
         version_unknown tracks all SONiC versions that doesn't have a version
@@ -892,10 +906,9 @@ class DBMigrator():
     def version_3_0_6(self):
         """
         Version 3_0_6
-        This is the latest version for 202211 branch
         """
-
         log.log_info('Handling version_3_0_6')
+
         self.set_version('version_4_0_0')
         return 'version_4_0_0'
 
@@ -929,9 +942,19 @@ class DBMigrator():
     def version_4_0_2(self):
         """
         Version 4_0_2.
-        This is the latest version for master branch
         """
         log.log_info('Handling version_4_0_2')
+        if self.stateDB.keys(self.stateDB.STATE_DB, "FAST_REBOOT|system"):
+            self.migrate_config_db_flex_counter_delay_status()
+        self.set_version('version_4_0_3')
+        return 'version_4_0_3'
+
+    def version_4_0_3(self):
+        """
+        Version 4_0_3.
+        This is the latest version for 202211 branch
+        """
+        log.log_info('Handling version_4_0_3')
         return None
 
     def get_version(self):
