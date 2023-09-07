@@ -98,6 +98,7 @@ setup(
         'scripts/fdbclear',
         'scripts/fdbshow',
         'scripts/generate_dump',
+        'scripts/internal_links_monitor.py',
         'scripts/intfutil',
         'scripts/intfstat',
         'scripts/ipintutil',
