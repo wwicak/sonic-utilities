@@ -7,7 +7,7 @@ import click
 import utilities_common.cli as clicommon
 import utilities_common.multi_asic as multi_asic_util
 from natsort import natsorted
-from sonic_py_common import multi_asic
+from sonic_py_common import multi_asic, device_info
 from tabulate import tabulate
 from utilities_common import constants
 
@@ -88,23 +88,51 @@ def get_dynamic_neighbor_subnet(db):
         return neighbor_data
 
 
+def get_internal_bgp_neighbors_dict(namespace=multi_asic.DEFAULT_NAMESPACE):
+    """
+    Uses config_db to get the internal bgp neighbors and names in dictionary format
+    :return: dictionary of internal bgp neighbors
+    """
+    config_db = multi_asic.connect_config_db_for_ns(namespace)
+    internal_neighbors = get_neighbor_dict_from_table(config_db, 'BGP_INTERNAL_NEIGHBOR')
+    voq_chassis_neighbors = get_neighbor_dict_from_table(config_db, 'BGP_VOQ_CHASSIS_NEIGHBOR')
+    internal_neighbors.update(voq_chassis_neighbors)
+    return internal_neighbors
+
+
+def get_external_bgp_neighbors_dict(namespace=multi_asic.DEFAULT_NAMESPACE):
+    """
+    Uses config_db to get the external bgp neighbors and names in dictionary format
+    :return: dictionary of external bgp neighbors
+    """
+    config_db = multi_asic.connect_config_db_for_ns(namespace)
+    external_neighbors = get_neighbor_dict_from_table(config_db, 'BGP_NEIGHBOR')
+    bgp_monitors = get_neighbor_dict_from_table(config_db, 'BGP_MONITORS')
+    external_neighbors.update(bgp_monitors)
+    return external_neighbors
+
+
+def get_dynamic_bgp_neighbors_dict(namespace=multi_asic.DEFAULT_NAMESPACE):
+    """
+    Uses config_db to get the dynamic bgp neighbors and names in dictionary format
+    :return: dictionary of dynamic bgp neighbors
+    """
+    config_db = multi_asic.connect_config_db_for_ns(namespace)
+    dynamic_neighbors = get_dynamic_neighbor_subnet(config_db)
+    return dynamic_neighbors
+
+
 def get_bgp_neighbors_dict(namespace=multi_asic.DEFAULT_NAMESPACE):
     """
     Uses config_db to get the bgp neighbors and names in dictionary format
-    :return:
+    :return: dictionary of bgp neighbors
     """
-    dynamic_neighbors = {}
-    config_db = multi_asic.connect_config_db_for_ns(namespace)
-    static_neighbors = get_neighbor_dict_from_table(config_db, 'BGP_NEIGHBOR')
-    static_internal_neighbors = get_neighbor_dict_from_table(config_db, 'BGP_INTERNAL_NEIGHBOR')
-    static_neighbors.update(static_internal_neighbors)
-    static_internal_neighbors = get_neighbor_dict_from_table(config_db, 'BGP_VOQ_CHASSIS_NEIGHBOR')
-    static_neighbors.update(static_internal_neighbors)
-    bgp_monitors = get_neighbor_dict_from_table(config_db, 'BGP_MONITORS')
-    static_neighbors.update(bgp_monitors)
-    dynamic_neighbors = get_dynamic_neighbor_subnet(config_db)
+    static_neighbors = {}
+    static_neighbors.update(get_internal_bgp_neighbors_dict(namespace))
+    static_neighbors.update(get_external_bgp_neighbors_dict(namespace))
+    
+    dynamic_neighbors = get_dynamic_bgp_neighbors_dict(namespace)
     return static_neighbors, dynamic_neighbors
-
 
 def get_bgp_neighbor_ip_to_name(ip, static_neighbors, dynamic_neighbors):
     """
@@ -242,8 +270,21 @@ def get_bgp_summary_from_all_bgp_instances(af, namespace, display):
         # no bgp neighbors found so print basic device bgp info
         if key not in cmd_output_json:
             has_bgp_neighbors = False
-            vtysh_cmd = "show ip bgp json"
-            no_neigh_cmd_output = run_bgp_show_command(vtysh_cmd, ns)
+        else:
+            # for multi asic devices or chassis linecards, the output of 'show ip bgp summary json'
+            # will have both internal and external bgp neighbors
+            # So, check if the current namespace has external bgp neighbors.
+            # If not, treat it as no bgp neighbors
+            if (device.get_display_option() == constants.DISPLAY_EXTERNAL and
+                (device_info.is_chassis() or multi_asic.is_multi_asic())):
+                external_peers_list_in_cfg_db = get_external_bgp_neighbors_dict(
+                    device.current_namespace).keys()
+                if not external_peers_list_in_cfg_db:
+                    has_bgp_neighbors = False
+
+        if not has_bgp_neighbors:
+            vtysh_bgp_json_cmd = "show ip bgp json"
+            no_neigh_cmd_output = run_bgp_show_command(vtysh_bgp_json_cmd, ns)
             try:
                 no_neigh_cmd_output_json = json.loads(no_neigh_cmd_output)
             except ValueError:
@@ -324,12 +365,18 @@ def process_bgp_summary_json(bgp_summary, cmd_output, device, has_bgp_neighbors=
                 'peerGroupMemory', 0) + cmd_output['peerGroupMemory']
         else:
             # when there are no bgp neighbors, all values are zero
-            bgp_summary['peerCount'] = 0
-            bgp_summary['peerMemory'] = 0
-            bgp_summary['ribCount'] = 0
-            bgp_summary['ribMemory'] = 0
-            bgp_summary['peerGroupCount'] = 0
-            bgp_summary['peerGroupMemory'] = 0
+            bgp_summary['peerCount'] = bgp_summary.get(
+                'peerCount', 0) + 0
+            bgp_summary['peerMemory'] = bgp_summary.get(
+                'peerCount', 0) + 0
+            bgp_summary['ribCount'] = bgp_summary.get(
+                'peerCount', 0) + 0
+            bgp_summary['ribMemory'] = bgp_summary.get(
+                'peerCount', 0) + 0
+            bgp_summary['peerGroupCount'] = bgp_summary.get(
+                'peerCount', 0) + 0
+            bgp_summary['peerGroupMemory'] = bgp_summary.get(
+                'peerCount', 0) + 0
 
         # store instance level field is seperate dict
         router_info = {}
