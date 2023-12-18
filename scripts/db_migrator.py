@@ -1162,7 +1162,7 @@ class DBMigrator():
             yang_parser.validate_data_tree()
         except sonic_yang.SonicYangException as e:
             syslog.syslog(syslog.LOG_CRIT, "Yang validation failed: " + str(e))
-            if os.environ["UTILITIES_UNIT_TESTING"] == "2":
+            if os.environ.get("UTILITIES_UNIT_TESTING", "0") == "2":
                 raise
 
 
