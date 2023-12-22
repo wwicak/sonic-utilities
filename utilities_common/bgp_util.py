@@ -88,16 +88,22 @@ def get_dynamic_neighbor_subnet(db):
         return neighbor_data
 
 
-def get_internal_bgp_neighbors_dict(namespace=multi_asic.DEFAULT_NAMESPACE):
+def get_bgp_neighbors_dict(namespace=multi_asic.DEFAULT_NAMESPACE):
     """
-    Uses config_db to get the internal bgp neighbors and names in dictionary format
-    :return: dictionary of internal bgp neighbors
+    Uses config_db to get the bgp neighbors and names in dictionary format
+    :return:
     """
+    dynamic_neighbors = {}
     config_db = multi_asic.connect_config_db_for_ns(namespace)
-    internal_neighbors = get_neighbor_dict_from_table(config_db, 'BGP_INTERNAL_NEIGHBOR')
-    voq_chassis_neighbors = get_neighbor_dict_from_table(config_db, 'BGP_VOQ_CHASSIS_NEIGHBOR')
-    internal_neighbors.update(voq_chassis_neighbors)
-    return internal_neighbors
+    static_neighbors = get_neighbor_dict_from_table(config_db, 'BGP_NEIGHBOR')
+    static_internal_neighbors = get_neighbor_dict_from_table(config_db, 'BGP_INTERNAL_NEIGHBOR')
+    static_neighbors.update(static_internal_neighbors)
+    static_internal_neighbors = get_neighbor_dict_from_table(config_db, 'BGP_VOQ_CHASSIS_NEIGHBOR')
+    static_neighbors.update(static_internal_neighbors)
+    bgp_monitors = get_neighbor_dict_from_table(config_db, 'BGP_MONITORS')
+    static_neighbors.update(bgp_monitors)
+    dynamic_neighbors = get_dynamic_neighbor_subnet(config_db)
+    return static_neighbors, dynamic_neighbors
 
 
 def get_external_bgp_neighbors_dict(namespace=multi_asic.DEFAULT_NAMESPACE):
@@ -111,28 +117,6 @@ def get_external_bgp_neighbors_dict(namespace=multi_asic.DEFAULT_NAMESPACE):
     external_neighbors.update(bgp_monitors)
     return external_neighbors
 
-
-def get_dynamic_bgp_neighbors_dict(namespace=multi_asic.DEFAULT_NAMESPACE):
-    """
-    Uses config_db to get the dynamic bgp neighbors and names in dictionary format
-    :return: dictionary of dynamic bgp neighbors
-    """
-    config_db = multi_asic.connect_config_db_for_ns(namespace)
-    dynamic_neighbors = get_dynamic_neighbor_subnet(config_db)
-    return dynamic_neighbors
-
-
-def get_bgp_neighbors_dict(namespace=multi_asic.DEFAULT_NAMESPACE):
-    """
-    Uses config_db to get the bgp neighbors and names in dictionary format
-    :return: dictionary of bgp neighbors
-    """
-    static_neighbors = {}
-    static_neighbors.update(get_internal_bgp_neighbors_dict(namespace))
-    static_neighbors.update(get_external_bgp_neighbors_dict(namespace))
-    
-    dynamic_neighbors = get_dynamic_bgp_neighbors_dict(namespace)
-    return static_neighbors, dynamic_neighbors
 
 def get_bgp_neighbor_ip_to_name(ip, static_neighbors, dynamic_neighbors):
     """
