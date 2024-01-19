@@ -12942,7 +12942,8 @@ Clear MACsec counters which is to reset all MACsec counters to ZERO.
 Go Back To [Beginning of the document](#) or [Beginning of this section](#macsec-commands)
 
 # SFP Utilities Commands
- This sub-section explains the list of commands available for SFP utilities feature.
+
+This sub-section explains the list of commands available for SFP utilities feature.
 
 ## SFP Utilities show commands
  
@@ -13048,7 +13049,7 @@ EEPROM hexdump for port Ethernet8
         000000f0 00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00 |................|
 ```
 
-# SFP Utilities read command
+## SFP Utilities read command
 
 - Read SFP EEPROM data
 
@@ -13080,7 +13081,7 @@ admin@sonic:~$ sfputil read-eeprom --port Ethernet0 --page 0 --offset 100 --size
 4a44
 ```
 
-# SFP Utilities write command
+## SFP Utilities write command
 
 - Write SFP EEPROM data
 
