@@ -9,10 +9,10 @@ import generic_config_updater.change_applier
 import generic_config_updater.patch_sorter as ps
 import generic_config_updater.generic_updater as gu
 from .gutest_helpers import Files
-from generic_config_updater.gu_common import ConfigWrapper, PatchWrapper
+from generic_config_updater.gu_common import ConfigWrapper, PatchWrapper, Utils
 
 running_config = {}
-    
+
 def set_entry(config_db, tbl, key, data):
     global running_config
     if data != None:
@@ -32,7 +32,9 @@ def get_running_config():
 class TestFeaturePatchApplication(unittest.TestCase):
     def setUp(self):
         self.config_wrapper = ConfigWrapper()
-    
+        self.utils = Utils()
+        self.namespace = ""
+
     @patch("generic_config_updater.field_operation_validators.rdma_config_update_validator", mock.Mock(return_value=True))
     def test_feature_patch_application_success(self):
         # Format of the JSON file containing the test-cases:
@@ -49,7 +51,7 @@ class TestFeaturePatchApplication(unittest.TestCase):
         #     .
         # }
         data = Files.FEATURE_PATCH_APPLICATION_TEST_SUCCESS
-        
+
         for test_case_name in data:
             with self.subTest(name=test_case_name):
                 self.run_single_success_case_applier(data[test_case_name])
@@ -70,14 +72,14 @@ class TestFeaturePatchApplication(unittest.TestCase):
         #     .
         # }
         data = Files.FEATURE_PATCH_APPLICATION_TEST_FAILURE
-        
+
         for test_case_name in data:
             with self.subTest(name=test_case_name):
                 self.run_single_failure_case_applier(data[test_case_name])
-    
+
     def create_strict_patch_sorter(self, config):
         config_wrapper = self.config_wrapper
-        config_wrapper.get_config_db_as_json = MagicMock(return_value=config)
+        self.utils.get_config_db_as_json = MagicMock(return_value=config)
         patch_wrapper = PatchWrapper(config_wrapper)
         return ps.StrictPatchSorter(config_wrapper, patch_wrapper)
 
@@ -85,24 +87,24 @@ class TestFeaturePatchApplication(unittest.TestCase):
         global running_config
         running_config = copy.deepcopy(config)
         config_wrapper = self.config_wrapper
-        config_wrapper.get_config_db_as_json = MagicMock(side_effect=get_running_config)
+        self.utils.get_config_db_as_json = MagicMock(side_effect=get_running_config)
         change_applier = generic_config_updater.change_applier.ChangeApplier()
         change_applier._get_running_config = MagicMock(side_effect=get_running_config)
         patch_wrapper = PatchWrapper(config_wrapper)
         return gu.PatchApplier(config_wrapper=config_wrapper, patch_wrapper=patch_wrapper, changeapplier=change_applier)
-    
+
     @patch("generic_config_updater.change_applier.get_config_db")
     @patch("generic_config_updater.change_applier.set_config")
     def run_single_success_case_applier(self, data, mock_set, mock_db):
         current_config = data["current_config"]
         expected_config = data["expected_config"]
         patch = jsonpatch.JsonPatch(data["patch"])
-        
+
         # Test patch applier
         mock_set.side_effect = set_entry
         patch_applier = self.create_patch_applier(current_config)
         patch_applier.apply(patch)
-        result_config = patch_applier.config_wrapper.get_config_db_as_json()
+        result_config = self.utils.get_config_db_as_json(self.namespace)
 
         self.assertEqual(expected_config, result_config)
 
@@ -119,7 +121,7 @@ class TestFeaturePatchApplication(unittest.TestCase):
 
         self.assertEqual(target_config, simulated_config)
         self.assertEqual(simulated_config, expected_config)
-    
+
     @patch("generic_config_updater.change_applier.get_config_db")
     def run_single_failure_case_applier(self, data, mock_db):
         current_config = data["current_config"]
@@ -133,7 +135,7 @@ class TestFeaturePatchApplication(unittest.TestCase):
         except Exception as ex:
             notfound_substrings = []
             error = str(ex)
-            
+
             for substring in expected_error_substrings:
                 if substring not in error:
                     notfound_substrings.append(substring)

@@ -4,7 +4,7 @@ import jsonpatch
 from collections import deque, OrderedDict
 from enum import Enum
 from .gu_common import OperationWrapper, OperationType, GenericConfigUpdaterError, \
-                       JsonChange, PathAddressing, genericUpdaterLogging
+                       JsonChange, PathAddressing, genericUpdaterLogging, utils
 
 class Diff:
     """
@@ -1666,14 +1666,15 @@ class SortAlgorithmFactory:
         return sorter
 
 class StrictPatchSorter:
-    def __init__(self, config_wrapper, patch_wrapper, inner_patch_sorter=None):
+    def __init__(self, namespace, config_wrapper, patch_wrapper, inner_patch_sorter=None):
+        self.namespace = namespace
         self.logger = genericUpdaterLogging.get_logger(title="Patch Sorter - Strict", print_all_to_console=True)
         self.config_wrapper = config_wrapper
         self.patch_wrapper = patch_wrapper
-        self.inner_patch_sorter = inner_patch_sorter if inner_patch_sorter else PatchSorter(config_wrapper, patch_wrapper)
+        self.inner_patch_sorter = inner_patch_sorter if inner_patch_sorter else PatchSorter(self.namespace, config_wrapper, patch_wrapper)
 
     def sort(self, patch, algorithm=Algorithm.DFS):
-        current_config = self.config_wrapper.get_config_db_as_json()
+        current_config = utils.get_config_db_as_json(self.namespace)
 
         # Validate patch is only updating tables with yang models
         self.logger.log_info("Validating patch is not making changes to tables without YANG models.")
@@ -1854,16 +1855,17 @@ class ChangeWrapper:
         return adjusted_changes
 
 class NonStrictPatchSorter:
-    def __init__(self, config_wrapper, patch_wrapper, config_splitter, change_wrapper=None, patch_sorter=None):
+    def __init__(self, namespace, config_wrapper, patch_wrapper, config_splitter, change_wrapper=None, patch_sorter=None):
+        self.namespace = namespace
         self.logger = genericUpdaterLogging.get_logger(title="Patch Sorter - Non-Strict", print_all_to_console=True)
         self.config_wrapper = config_wrapper
         self.patch_wrapper = patch_wrapper
         self.config_splitter = config_splitter
         self.change_wrapper = change_wrapper if change_wrapper else ChangeWrapper(patch_wrapper, config_splitter)
-        self.inner_patch_sorter = patch_sorter if patch_sorter else PatchSorter(config_wrapper, patch_wrapper)
+        self.inner_patch_sorter = patch_sorter if patch_sorter else PatchSorter(self.namespace, config_wrapper, patch_wrapper)
 
     def sort(self, patch, algorithm=Algorithm.DFS):
-        current_config = self.config_wrapper.get_config_db_as_json()
+        current_config = utils.get_config_db_as_json(self.namespace)
         target_config = self.patch_wrapper.simulate_patch(patch, current_config)
 
         # Splitting current/target config based on YANG covered vs non-YANG covered configs
@@ -1915,7 +1917,8 @@ class NonStrictPatchSorter:
         return changes
 
 class PatchSorter:
-    def __init__(self, config_wrapper, patch_wrapper, sort_algorithm_factory=None):
+    def __init__(self, namespace, config_wrapper, patch_wrapper, sort_algorithm_factory=None):
+        self.namespace = namespace
         self.config_wrapper = config_wrapper
         self.patch_wrapper = patch_wrapper
         self.operation_wrapper = OperationWrapper()
@@ -1924,7 +1927,7 @@ class PatchSorter:
             SortAlgorithmFactory(self.operation_wrapper, config_wrapper, self.path_addressing)
 
     def sort(self, patch, algorithm=Algorithm.DFS, preloaded_current_config=None):
-        current_config = preloaded_current_config if preloaded_current_config else self.config_wrapper.get_config_db_as_json()
+        current_config = preloaded_current_config if preloaded_current_config else utils.get_config_db_as_json(self.namespace)
         target_config = self.patch_wrapper.simulate_patch(patch, current_config)
 
         diff = Diff(current_config, target_config)
