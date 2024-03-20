@@ -1270,9 +1270,8 @@ class DBMigrator():
             json.dump(config, fp)
         process = subprocess.Popen(["config_validator.py", "-c", config_file])
         # Check validation result for unit test
-        if os.environ.get("UTILITIES_UNIT_TESTING", "0") == "2":
-            ret = process.wait()
-            assert ret == 0, "Yang validation failed"
+        ret = process.wait()
+        assert ret == 0, "Yang validation failed"
 
 def main():
     try:
