@@ -1270,8 +1270,11 @@ class DBMigrator():
             json.dump(config, fp)
         process = subprocess.Popen(["config_validator.py", "-c", config_file])
         # Check validation result for unit test
-        ret = process.wait()
-        assert ret == 0, "Yang validation failed"
+        # Check validation result for end to end test
+        mark_file = "/etc/sonic/mgmt_test_mark"
+        if os.environ.get("UTILITIES_UNIT_TESTING", "0") == "2" or os.path.exists(mark_file):
+            ret = process.wait()
+            assert ret == 0, "Yang validation failed"
 
 def main():
     try:
