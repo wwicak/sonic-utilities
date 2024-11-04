@@ -232,6 +232,16 @@ function get_dpu_bus_info() {
     debug "$DPU_NAME : $DPU_BUS_INFO"
 }
 
+#Function to detach PCI module
+function pci_detach_module() {
+    local DPU_NAME=$1
+    local DPU_BUS_INFO=$2
+    status = $(python3 -c "import reboot_helper; reboot_helper.pci_detach_module('${DPU_NAME}')")
+    if [ -z "$status" ] || [ "$status" = "false" ]; then
+        echo 1 > /sys/bus/pci/devices/${DPU_BUS_INFO}/remove
+    fi
+}
+
 # Function to reboot the platform module
 function reboot_platform_module() {
     local DPU_NAME=$1
@@ -297,7 +307,7 @@ function reboot_dpu_module()
     # Update STATE_DB and handle PCIe removal and rescan
     sonic-db-cli state_db set "PCIE_DETACH_INFO|${DPU_NAME}" '{"dpu_id": "'${DPU_INDEX}'", "dpu_state": "detaching", "bus_info": "'${DPU_BUS_INFO}'"}'
 
-    echo 1 > /sys/bus/pci/devices/${DPU_BUS_INFO}/remove
+    pci_detach_module "${DPU_NAME}" "${DPU_BUS_INFO}"
     reboot_platform_module "${DPU_NAME}"
     echo 1 > /sys/bus/pci/rescan
 

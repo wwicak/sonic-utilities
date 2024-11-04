@@ -16,58 +16,12 @@ SYSLOG_IDENTIFIER = "reboot_helper"
 
 EXIT_FAIL = -1
 EXIT_SUCCESS = 0
-ERROR_NOT_IMPLEMENTED = 1
-ERROR_EXCEPTION = 2
 
 # Global logger instance
 log = logger.Logger(SYSLOG_IDENTIFIER)
 
 # Global variable for platform chassis
 platform_chassis = None
-
-
-def get_all_dpus():
-    """
-    Retrieve a list of all DPUs (Data Processing Units) in the system.
-    This function checks if the platform is a smartswitch and then loads the platform.json
-    file to extract the DPUs dictionary. It converts the DPU names to uppercase and returns
-    them as a list.
-
-    Returns:
-        list: A list of DPU names in uppercase.
-    """
-    dpu_list = []
-
-    if not is_smartswitch():
-        return dpu_list
-
-    # Load platform.json
-    platform_info = device_info.get_platform_info()
-    platform = platform_info.get('platform')
-    if not platform:
-        log.log_error("Platform does not exist in platform_info")
-        return dpu_list
-    platform_json_path = os.path.join("/usr/share/sonic/device", platform, "platform.json")
-    try:
-        with open(platform_json_path, 'r') as platform_json:
-            config_data = json.load(platform_json)
-
-            # Extract DPUs dictionary
-            dpus = config_data.get("DPUS", {})
-
-            # Convert DPU names to uppercase and append to the list
-            dpu_list = [dpu.upper() for dpu in dpus]
-    except FileNotFoundError:
-        log.log_error("platform.json not found")
-        return dpu_list
-    except json.JSONDecodeError:
-        log.log_error("Failed to parse platform.json")
-        return dpu_list
-    except Exception as e:
-        log.log_error("Unexpected error occurred while getting DPUs: {}".format(e))
-        return dpu_list
-
-    return dpu_list
 
 
 def load_platform_chassis():
@@ -85,14 +39,53 @@ def load_platform_chassis():
     # Load new platform API class
     try:
         platform_chassis = sonic_platform.platform.Platform().get_chassis()
+        if platform_chassis is None:
+            log.log_error("Platform chassis is not loaded")
+            return False
+        return True
     except Exception as e:
-        raise RuntimeError("Failed to instantiate Chassis due to {}".format(str(e)))
-
-    if platform_chassis is None:
-        log.log_error("Platform chassis is not loaded")
+        log.log_error(f"Failed to instantiate Chassis: {e}")
         return False
 
-    return True
+
+def load_platform_json(platform):
+    """Load and return the content of platform.json."""
+    platform_json_path = os.path.join("/usr/share/sonic/device", platform, "platform.json")
+    try:
+        with open(platform_json_path, 'r') as platform_json:
+            return json.load(platform_json)
+    except FileNotFoundError:
+        log.log_error("platform.json not found")
+    except json.JSONDecodeError:
+        log.log_error("Failed to parse platform.json")
+    return None
+
+
+def get_all_dpus():
+    """
+    Retrieve a list of all DPUs (Data Processing Units) in the system.
+    This function checks if the platform is a smartswitch and then loads the platform.json
+    file to extract the DPUs dictionary. It converts the DPU names to uppercase and returns
+    them as a list.
+
+    Returns:
+        list: A list of DPU names in uppercase.
+    """
+    if not is_smartswitch():
+        return []
+
+    platform_info = device_info.get_platform_info()
+    platform = platform_info.get('platform')
+    if not platform:
+        log.log_error("Platform does not exist in platform_info")
+        return []
+
+    config_data = load_platform_json(platform)
+    if config_data is None:
+        return []
+
+    dpus = config_data.get("DPUS", [])
+    return [dpu.upper() for dpu in dpus]
 
 
 def reboot_module(module_name):
@@ -105,7 +98,6 @@ def reboot_module(module_name):
     Returns:
         bool: True if the reboot command was successfully sent, False otherwise.
     """
-
     # Load the platform chassis if not already loaded
     load_platform_chassis()
 
@@ -114,9 +106,7 @@ def reboot_module(module_name):
         return False
 
     # Attempt to reboot the module
-    if hasattr(platform_chassis, 'reboot'):
-        platform_chassis.reboot(module_name)
-    else:
+    if not hasattr(platform_chassis, 'reboot'):
         log.log_error("Reboot method not found in platform chassis")
         return False
 
@@ -132,7 +122,7 @@ def reboot_module(module_name):
         raise NotImplementedError("Reboot not implemented on this platform: {type(e).__name__}")
     except Exception as e:
         log.log_error("Unexpected error occurred while rebooting module {}: {}".format(module_name, e))
-        sys.exit(ERROR_EXCEPTION)
+        return False
 
     return True
 
@@ -152,44 +142,83 @@ def is_dpu():
     if not platform:
         log.log_error("Platform does not exist in platform_info")
         return False
-    platform_json_path = os.path.join("/usr/share/sonic/device", platform, "platform.json")
+
+    config_data = load_platform_json(platform)
+    if config_data is None:
+        return False
+
+    return any(re.search(r'\.DPU$', key) for key in config_data.keys())
+
+
+def pci_detach_module(module_name):
+    """
+    Detach the specified module by invoking the platform API.
+
+    Args:
+        module_name (str): The name of the module to detach.
+
+    Returns:
+        bool: True if the detach command was successfully sent, False otherwise.
+    """
+
+    # Load the platform chassis if not already loaded
+    load_platform_chassis()
+
+    if not is_smartswitch():
+        log.log_error("Platform is not a smartswitch to detach module")
+        return False
+
+    # Attempt to detach the module
+    if not hasattr(platform_chassis, 'pci_detach'):
+        log.log_error("PCI detach method not found in platform chassis")
+        return False
+
+    if module_name.upper() not in get_all_dpus():
+        log.log_error("Module {} not found".format(module_name))
+        return False
+
+    log.log_info("Detaching module {}...".format(module_name))
     try:
-        with open(platform_json_path, 'r') as platform_json:
-            config_data = json.load(platform_json)
-
-            # Check for any key matching the .DPU pattern
-            for key in config_data.keys():
-                if re.search(r'\.DPU$', key):
-                    return True
-    except FileNotFoundError:
-        log.log_error("platform.json not found")
-    except json.JSONDecodeError:
-        log.log_error("Failed to parse platform.json")
-
-    return False
+        platform_chassis.pci_detach(module_name)
+        log.log_info("Detach command sent for module {}".format(module_name))
+        return True
+    except NotImplementedError:
+        raise NotImplementedError("PCI detach not implemented on this platform: {type(e).__name__}")
+    except Exception as e:
+        log.log_error("Unexpected error occurred while detaching module {}: {}".format(module_name, e))
+        return False
 
 
-if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        print("Usage: reboot_helper.py <command> <module_name>")
+def main():
+    if len(sys.argv) < 2:
+        print("Usage: reboot_helper.py <command> [module_name]")
         sys.exit(EXIT_FAIL)
 
     command = sys.argv[1]
-    module_name = sys.argv[2]
 
-    if command == "reboot":
-        success = reboot_module(module_name)
-        if is_dpu():
-            print("Script is running on DPU module")
-        else:
+    if command == "reboot" or command == "pci_detach":
+        if len(sys.argv) < 3:
+            print("Usage: reboot_helper.py <command> <module_name>")
             sys.exit(EXIT_FAIL)
-        if not is_dpu():
-            sys.exit(ERROR_EXCEPTION)
+        module_name = sys.argv[2]
+
+        if command == "reboot":
+            success = reboot_module(module_name)
+            if not success:
+                sys.exit(EXIT_FAIL)
+        elif command == "pci_detach":
+            success = pci_detach_module(module_name)
+            if not success:
+                sys.exit(EXIT_FAIL)
     elif command == "is_dpu":
         if is_dpu():
             print("Script is running on DPU module")
         else:
             sys.exit(EXIT_FAIL)
     else:
-        print("Unknown command: {command}")
+        print(f"Unknown command: {command}")
         sys.exit(EXIT_FAIL)
+
+
+if __name__ == "__main__":
+    main()
