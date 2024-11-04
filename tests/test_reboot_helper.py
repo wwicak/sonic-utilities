@@ -193,7 +193,7 @@ def test_pci_detach_module_not_found(mock_load_platform_chassis, mock_get_platfo
 
 
 def test_pci_detach_module_not_implemented(mock_load_platform_chassis, mock_is_smartswitch,
-                                       mock_get_platform_info, mock_platform_chassis):
+                                           mock_get_platform_info, mock_platform_chassis):
     mock_get_platform_info.return_value = {'platform': 'mock_platform'}
     mock_platform_chassis.pci_detach.side_effect = NotImplementedError
     with patch('scripts.reboot_helper.get_all_dpus', return_value=["DPU1"]):
@@ -208,7 +208,7 @@ def test_pci_detach_module_empty_dpu_list(mock_load_platform_chassis):
 
 
 def test_pci_detach_module_success(mock_load_platform_chassis, mock_is_smartswitch,
-                               mock_get_platform_info, mock_platform_chassis):
+                                   mock_get_platform_info, mock_platform_chassis):
     mock_get_platform_info.return_value = {'platform': 'mock_platform'}
     with patch('scripts.reboot_helper.get_all_dpus', return_value=["DPU1"]):
         mock_platform_chassis.reboot.return_value = True
@@ -222,7 +222,6 @@ def test_main_reboot_command_success(monkeypatch):
 
     # Mock dependencies
     with patch('scripts.reboot_helper.reboot_module', return_value=True) as mock_reboot_module, \
-         patch('builtins.print') as mock_print, \
          patch('sys.exit') as mock_exit:
 
         scripts.reboot_helper.main()
@@ -283,7 +282,6 @@ def test_main_pci_detach_command_success(monkeypatch):
 
     # Mock dependencies
     with patch('scripts.reboot_helper.pci_detach_module', return_value=True) as mock_reboot_module, \
-         patch('builtins.print') as mock_print, \
          patch('sys.exit') as mock_exit:
 
         scripts.reboot_helper.main()
