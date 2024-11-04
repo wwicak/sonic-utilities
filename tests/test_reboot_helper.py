@@ -1,5 +1,6 @@
 import os
 import sys
+import pytest
 import unittest
 from unittest.mock import patch, MagicMock, mock_open
 
@@ -18,6 +19,41 @@ class TestRebootHelper(unittest.TestCase):
             MagicMock(return_value=False)
             )
     def test_get_all_dpus_not_smartswitch(self):
+        dpu_list = scripts.reboot_helper.get_all_dpus()
+        self.assertEqual(dpu_list, [])
+
+    @patch('scripts.reboot_helper.device_info.get_platform_info')
+    @patch('scripts.reboot_helper.is_smartswitch')
+    def test_get_all_dpus_invalid_platform_info(self, mock_is_smartswitch,
+                                                mock_get_platform_info):
+        mock_is_smartswitch.return_value = True
+        mock_get_platform_info.return_value = {'platform': None}
+        # Simulate get_platform_info returning None or invalid data
+        dpu_list = scripts.reboot_helper.get_all_dpus()
+        self.assertEqual(dpu_list, [])
+
+    @patch('builtins.open', side_effect=FileNotFoundError)
+    def test_get_all_dpus_file_not_found(self, mock_open):
+        # Simulate the FileNotFoundError scenario
+        dpu_list = scripts.reboot_helper.get_all_dpus()
+        self.assertEqual(dpu_list, [])
+
+    @patch(
+        'os.path.join', MagicMock(return_value="/mock/path/platform.json")
+        )
+    @patch('builtins.open', new_callable=mock_open, read_data='Invalid JSON')
+    @patch(
+        'scripts.reboot_helper.device_info.get_platform_info',
+        MagicMock(return_value={'platform': 'mock_platform'})
+        )
+    @patch(
+        'scripts.reboot_helper.load_platform_chassis',
+        MagicMock(return_value=True)
+        )
+    @patch(
+        'scripts.reboot_helper.is_smartswitch', MagicMock(return_value=True)
+        )
+    def test_get_all_dpus_malformed_json(self, mock_is_smartswitch):
         dpu_list = scripts.reboot_helper.get_all_dpus()
         self.assertEqual(dpu_list, [])
 
@@ -46,6 +82,13 @@ class TestRebootHelper(unittest.TestCase):
         mock_get_chassis.return_value = MagicMock()
         result = scripts.reboot_helper.load_platform_chassis()
         self.assertTrue(result)
+
+    @patch('scripts.reboot_helper.sonic_platform.platform.Platform')
+    def test_load_platform_chassis_exception(self, mock_platform):
+        mock_platform.side_effect = RuntimeError
+
+        with pytest.raises(RuntimeError):
+            scripts.reboot_helper.load_platform_chassis()
 
     @patch(
         'scripts.reboot_helper.load_platform_chassis',
@@ -78,6 +121,27 @@ class TestRebootHelper(unittest.TestCase):
         )
     def test_reboot_module_not_found(self):
         result = scripts.reboot_helper.reboot_module("DPU2")
+        self.assertFalse(result)
+
+    @patch('scripts.reboot_helper.get_all_dpus',
+           MagicMock(return_value=["DPU1"]))
+    @patch('scripts.reboot_helper.load_platform_chassis',
+           MagicMock(return_value=True))
+    @patch('scripts.reboot_helper.is_smartswitch',
+           MagicMock(return_value=True))
+    @patch('scripts.reboot_helper.platform_chassis.reboot',
+           MagicMock(side_effect=NotImplementedError))
+    def test_reboot_module_not_implemented(self):
+        with pytest.raises(RuntimeError):
+            scripts.reboot_helper.reboot_module("DPU1")
+
+    @patch('scripts.reboot_helper.get_all_dpus', MagicMock(return_value=[]))
+    @patch('scripts.reboot_helper.load_platform_chassis',
+           MagicMock(return_value=True))
+    @patch('scripts.reboot_helper.is_smartswitch',
+           MagicMock(return_value=True))
+    def test_reboot_module_empty_dpu_list(self):
+        result = scripts.reboot_helper.reboot_module("DPU1")
         self.assertFalse(result)
 
     @patch(
@@ -141,10 +205,7 @@ class TestRebootHelper(unittest.TestCase):
     @patch(
         'os.path.join', MagicMock(return_value="/mock/path/platform.json")
         )
-    @patch(
-        'builtins.open', new_callable=mock_open,
-        read_data='{}'
-        )
+    @patch('builtins.open', new_callable=mock_open, read_data='{}')
     @patch(
         'scripts.reboot_helper.device_info.get_platform_info',
         MagicMock(return_value={'platform': 'mock_platform'})

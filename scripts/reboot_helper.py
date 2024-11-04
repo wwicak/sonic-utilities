@@ -57,12 +57,15 @@ def get_all_dpus():
 
             # Convert DPU names to uppercase and append to the list
             dpu_list = [dpu.upper() for dpu in dpus]
-
     except FileNotFoundError:
         log.log_error("platform.json not found")
+        return dpu_list
     except json.JSONDecodeError:
         log.log_error("Failed to parse platform.json")
-        sys.exit(ERROR_EXCEPTION)
+        return dpu_list
+    except Exception as e:
+        log.log_error("Unexpected error occurred while getting DPUs: {}".format(e))
+        return dpu_list
 
     return dpu_list
 
@@ -83,12 +86,11 @@ def load_platform_chassis():
     try:
         platform_chassis = sonic_platform.platform.Platform().get_chassis()
     except Exception as e:
-        log.log_error("Failed to instantiate Chassis due to {}".format(repr(e)))
-        sys.exit(ERROR_EXCEPTION)
+        raise RuntimeError("Failed to instantiate Chassis due to {}".format(str(e)))
 
-    if not platform_chassis:
+    if platform_chassis is None:
         log.log_error("Platform chassis is not loaded")
-        sys.exit(EXIT_FAIL)
+        return False
 
     return True
 
@@ -127,10 +129,9 @@ def reboot_module(module_name):
         platform_chassis.reboot(module_name)
         log.log_info("Reboot command sent for module {}".format(module_name))
     except NotImplementedError:
-        log.log_error("Reboot not implemented on this platform")
-        sys.exit(ERROR_NOT_IMPLEMENTED)
+        raise NotImplementedError("Reboot not implemented on this platform: {type(e).__name__}")
     except Exception as e:
-        log.log_error("An error occurred while rebooting module {}: {}".format(module_name, e))
+        log.log_error("Unexpected error occurred while rebooting module {}: {}".format(module_name, e))
         sys.exit(ERROR_EXCEPTION)
 
     return True
@@ -164,7 +165,6 @@ def is_dpu():
         log.log_error("platform.json not found")
     except json.JSONDecodeError:
         log.log_error("Failed to parse platform.json")
-        sys.exit(ERROR_EXCEPTION)
 
     return False
 
@@ -179,10 +179,12 @@ if __name__ == "__main__":
 
     if command == "reboot":
         success = reboot_module(module_name)
-        if not success:
-            sys.exit(EXIT_FAIL)
+        if is_dpu():
+            print("Script is running on DPU module")
         else:
-            print("Reboot command sent for module {module_name}")
+            sys.exit(EXIT_FAIL)
+        if not is_dpu():
+            sys.exit(ERROR_EXCEPTION)
     elif command == "is_dpu":
         if is_dpu():
             print("Script is running on DPU module")
