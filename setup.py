@@ -161,6 +161,7 @@ setup(
         'scripts/psushow',
         'scripts/queuestat',
         'scripts/reboot',
+        'scripts/reboot_helper.py',
         'scripts/route_check.py',
         'scripts/route_check_test.sh',
         'scripts/vnet_route_check.py',
