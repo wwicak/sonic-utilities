@@ -4,13 +4,10 @@
 #
 # Utility helper for reboot within SONiC
 
-import os
-import re
 import sys
-import json
 import sonic_platform
-from sonic_py_common import logger, device_info
-from utilities_common.chassis import is_smartswitch
+from sonic_py_common import logger
+from utilities_common.chassis import is_smartswitch, get_dpu_list
 
 SYSLOG_IDENTIFIER = "reboot_helper"
 
@@ -44,65 +41,48 @@ def load_platform_chassis():
             return False
         return True
     except Exception as e:
-        log.log_error(f"Failed to instantiate Chassis: {e}")
+        log.log_error("Failed to instantiate Chassis: {}".format(str(e)))
         return False
 
 
-def load_platform_json(platform):
-    """Load and return the content of platform.json."""
-    platform_json_path = os.path.join("/usr/share/sonic/device", platform, "platform.json")
-    try:
-        with open(platform_json_path, 'r') as platform_json:
-            return json.load(platform_json)
-    except FileNotFoundError:
-        log.log_error("platform.json not found")
-    except json.JSONDecodeError:
-        log.log_error("Failed to parse platform.json")
-    return None
-
-
-def get_all_dpus():
+def load_and_verify(module_name):
     """
-    Retrieve a list of all DPUs (Data Processing Units) in the system.
-    This function checks if the platform is a smartswitch and then loads the platform.json
-    file to extract the DPUs dictionary. It converts the DPU names to uppercase and returns
-    them as a list.
+    Load the platform chassis and verify the required parameters.
+
+    Args:
+        module_name (str): The name of the module to verify.
 
     Returns:
-        list: A list of DPU names in uppercase.
+        bool: True if platform chassis is successfully loaded and required parameters are verified, False otherwise.
     """
+    # Load the platform chassis if not already loaded
+    if not load_platform_chassis():
+        return False
+
     if not is_smartswitch():
-        return []
+        log.log_error("Platform is not a smartswitch")
+        return False
 
-    platform_info = device_info.get_platform_info()
-    platform = platform_info.get('platform')
-    if not platform:
-        log.log_error("Platform does not exist in platform_info")
-        return []
+    dpu_list = get_dpu_list()
+    if module_name.lower() not in dpu_list:
+        log.log_error("Module {} not found".format(module_name))
+        return False
 
-    config_data = load_platform_json(platform)
-    if config_data is None:
-        return []
-
-    dpus = config_data.get("DPUS", [])
-    return [dpu.upper() for dpu in dpus]
+    return True
 
 
-def reboot_module(module_name):
+def reboot_dpu(module_name, reboot_type):
     """
     Reboot the specified module by invoking the platform API.
 
     Args:
         module_name (str): The name of the module to reboot.
+        reboot_type (str): The type of reboot requested for the module.
 
     Returns:
         bool: True if the reboot command was successfully sent, False otherwise.
     """
-    # Load the platform chassis if not already loaded
-    load_platform_chassis()
-
-    if not is_smartswitch():
-        log.log_error("Platform is not a smartswitch to reboot module")
+    if not load_and_verify(module_name):
         return False
 
     # Attempt to reboot the module
@@ -110,44 +90,14 @@ def reboot_module(module_name):
         log.log_error("Reboot method not found in platform chassis")
         return False
 
-    if module_name.upper() not in get_all_dpus():
-        log.log_error("Module {} not found".format(module_name))
-        return False
-
-    log.log_info("Rebooting module {}...".format(module_name))
+    log.log_info("Rebooting module {} with reboot_type {}...".format(module_name, reboot_type))
     try:
-        platform_chassis.reboot(module_name)
-        log.log_info("Reboot command sent for module {}".format(module_name))
-    except NotImplementedError:
-        raise NotImplementedError("Reboot not implemented on this platform: {type(e).__name__}")
-    except Exception as e:
+        platform_chassis.reboot(module_name, reboot_type)
+        log.log_info("Reboot command sent for module {} with reboot_type {}".format(module_name, reboot_type))
+        return True
+    except (NotImplementedError, AttributeError) as e:
         log.log_error("Unexpected error occurred while rebooting module {}: {}".format(module_name, e))
         return False
-
-    return True
-
-
-def is_dpu():
-    """Check if script is running on DPU module"""
-
-    # Load the platform chassis if not already loaded
-    load_platform_chassis()
-
-    if not is_smartswitch():
-        return False
-
-    # Load platform.json
-    platform_info = device_info.get_platform_info()
-    platform = platform_info.get('platform')
-    if not platform:
-        log.log_error("Platform does not exist in platform_info")
-        return False
-
-    config_data = load_platform_json(platform)
-    if config_data is None:
-        return False
-
-    return any(re.search(r'\.DPU$', key) for key in config_data.keys())
 
 
 def pci_detach_module(module_name):
@@ -160,12 +110,7 @@ def pci_detach_module(module_name):
     Returns:
         bool: True if the detach command was successfully sent, False otherwise.
     """
-
-    # Load the platform chassis if not already loaded
-    load_platform_chassis()
-
-    if not is_smartswitch():
-        log.log_error("Platform is not a smartswitch to detach module")
+    if not load_and_verify(module_name):
         return False
 
     # Attempt to detach the module
@@ -173,47 +118,64 @@ def pci_detach_module(module_name):
         log.log_error("PCI detach method not found in platform chassis")
         return False
 
-    if module_name.upper() not in get_all_dpus():
-        log.log_error("Module {} not found".format(module_name))
-        return False
-
     log.log_info("Detaching module {}...".format(module_name))
     try:
         platform_chassis.pci_detach(module_name)
         log.log_info("Detach command sent for module {}".format(module_name))
         return True
-    except NotImplementedError:
-        raise NotImplementedError("PCI detach not implemented on this platform: {type(e).__name__}")
-    except Exception as e:
+    except (NotImplementedError, AttributeError) as e:
+        log.log_error("Unexpected error occurred while detaching module {}: {}".format(module_name, e))
+        return False
+
+
+def pci_reattach_module(module_name):
+    """
+    Rescan the specified module by invoking the platform API.
+
+    Args:
+        module_name (str): The name of the module to rescan.
+
+    Returns:
+        bool: True if the rescan command was successfully sent, False otherwise.
+    """
+    if not load_and_verify(module_name):
+        return False
+
+    # Attempt to detach the module
+    if not hasattr(platform_chassis, 'pci_reattach'):
+        log.log_error("PCI reattach method not found in platform chassis")
+        return False
+
+    log.log_info("Rescaning module {}...".format(module_name))
+    try:
+        platform_chassis.pci_reattach(module_name)
+        log.log_info("Rescan command sent for module {}".format(module_name))
+        return True
+    except (NotImplementedError, AttributeError) as e:
         log.log_error("Unexpected error occurred while detaching module {}: {}".format(module_name, e))
         return False
 
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: reboot_helper.py <command> [module_name]")
+    if len(sys.argv) < 3:
+        print("Usage: reboot_helper.py <command> <module_name> [reboot_type]")
         sys.exit(EXIT_FAIL)
 
     command = sys.argv[1]
+    module_name = sys.argv[2]
 
-    if command == "reboot" or command == "pci_detach":
-        if len(sys.argv) < 3:
-            print("Usage: reboot_helper.py <command> <module_name>")
+    if command == "reboot":
+        if len(sys.argv) < 4:
+            print("Usage: reboot_helper.py reboot <module_name> <reboot_type>")
             sys.exit(EXIT_FAIL)
-        module_name = sys.argv[2]
-
-        if command == "reboot":
-            success = reboot_module(module_name)
-            if not success:
-                sys.exit(EXIT_FAIL)
-        elif command == "pci_detach":
-            success = pci_detach_module(module_name)
-            if not success:
-                sys.exit(EXIT_FAIL)
-    elif command == "is_dpu":
-        if is_dpu():
-            print("Script is running on DPU module")
-        else:
+        reboot_type = sys.argv[3]
+        if not reboot_dpu(module_name, reboot_type):
+            sys.exit(EXIT_FAIL)
+    elif command == "pci_detach":
+        if not pci_detach_module(module_name):
+            sys.exit(EXIT_FAIL)
+    elif command == "pci_reattach":
+        if not pci_reattach_module(module_name):
             sys.exit(EXIT_FAIL)
     else:
         print(f"Unknown command: {command}")

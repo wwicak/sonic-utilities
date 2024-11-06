@@ -20,3 +20,12 @@ def get_chassis_local_interfaces():
 
 def is_smartswitch():
     return hasattr(device_info, 'is_smartswitch') and device_info.is_smartswitch()
+
+def is_dpu():
+    return hasattr(device_info, 'is_dpu') and device_info.is_dpu()
+
+def get_dpu_list():
+    if hasattr(device_info, 'get_dpu_list'):
+        return device_info.get_dpu_list()
+
+    return []
