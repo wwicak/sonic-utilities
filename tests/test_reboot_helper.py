@@ -297,7 +297,7 @@ def test_main_reboot_invalid_reboot_type(monkeypatch):
 
     # Mock dependencies
     with patch('reboot_helper.reboot_dpu', return_value=False), \
-     patch('sys.exit') as mock_exit:
+         patch('sys.exit') as mock_exit:
         reboot_helper.main()
 
         # Check that sys.exit was called with EXIT_FAIL
@@ -310,7 +310,7 @@ def test_main_pci_detach_invalid_module(monkeypatch):
 
     # Mock dependencies
     with patch('reboot_helper.pci_detach_module', return_value=False), \
-     patch('sys.exit') as mock_exit:
+         patch('sys.exit') as mock_exit:
 
         reboot_helper.main()
 
@@ -324,7 +324,7 @@ def test_main_pci_reattach_invalid_module(monkeypatch):
 
     # Mock dependencies
     with patch('reboot_helper.pci_reattach_module', return_value=False), \
-     patch('sys.exit') as mock_exit:
+         patch('sys.exit') as mock_exit:
 
         reboot_helper.main()
 
