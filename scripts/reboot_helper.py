@@ -92,10 +92,11 @@ def reboot_dpu(module_name, reboot_type):
 
     log.log_info("Rebooting module {} with reboot_type {}...".format(module_name, reboot_type))
     try:
-        platform_chassis.reboot(module_name, reboot_type)
-        log.log_info("Reboot command sent for module {} with reboot_type {}".format(module_name, reboot_type))
+        status = platform_chassis.reboot(module_name, reboot_type)
+        if not status:
+            log.log_error("Reboot status for module {}: {}".format(module_name, status))
         return True
-    except (NotImplementedError, AttributeError) as e:
+    except Exception as e:
         log.log_error("Unexpected error occurred while rebooting module {}: {}".format(module_name, e))
         return False
 
@@ -120,10 +121,11 @@ def pci_detach_module(module_name):
 
     log.log_info("Detaching module {}...".format(module_name))
     try:
-        platform_chassis.pci_detach(module_name)
-        log.log_info("Detach command sent for module {}".format(module_name))
+        status = platform_chassis.pci_detach(module_name)
+        if not status:
+            log.log_error("PCI detach status for module {}: {}".format(module_name, status))
         return True
-    except (NotImplementedError, AttributeError) as e:
+    except Exception as e:
         log.log_error("Unexpected error occurred while detaching module {}: {}".format(module_name, e))
         return False
 
@@ -148,10 +150,11 @@ def pci_reattach_module(module_name):
 
     log.log_info("Rescaning module {}...".format(module_name))
     try:
-        platform_chassis.pci_reattach(module_name)
-        log.log_info("Rescan command sent for module {}".format(module_name))
+        status = platform_chassis.pci_reattach(module_name)
+        if not status:
+            log.log_error("PCI detach status for module {}: {}".format(module_name, status))
         return True
-    except (NotImplementedError, AttributeError) as e:
+    except Exception as e:
         log.log_error("Unexpected error occurred while detaching module {}: {}".format(module_name, e))
         return False
 

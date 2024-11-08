@@ -1,5 +1,4 @@
 # tests/test_reboot_helper.py
-import os
 import sys
 import pytest
 from unittest.mock import patch, MagicMock, mock_open
@@ -7,7 +6,8 @@ from unittest.mock import patch, MagicMock, mock_open
 sys.modules['sonic_platform'] = MagicMock()
 
 sys.path.append("scripts")
-import reboot_helper
+import reboot_helper  # noqa: E402
+
 
 @pytest.fixture
 def mock_load_platform_chassis():
@@ -297,7 +297,7 @@ def test_main_reboot_invalid_reboot_type(monkeypatch):
 
     # Mock dependencies
     with patch('reboot_helper.reboot_dpu', return_value=False), \
-        patch('sys.exit') as mock_exit:
+     patch('sys.exit') as mock_exit:
         reboot_helper.main()
 
         # Check that sys.exit was called with EXIT_FAIL
@@ -310,7 +310,7 @@ def test_main_pci_detach_invalid_module(monkeypatch):
 
     # Mock dependencies
     with patch('reboot_helper.pci_detach_module', return_value=False), \
-        patch('sys.exit') as mock_exit:
+     patch('sys.exit') as mock_exit:
 
         reboot_helper.main()
 
@@ -324,7 +324,7 @@ def test_main_pci_reattach_invalid_module(monkeypatch):
 
     # Mock dependencies
     with patch('reboot_helper.pci_reattach_module', return_value=False), \
-        patch('sys.exit') as mock_exit:
+     patch('sys.exit') as mock_exit:
 
         reboot_helper.main()
 
