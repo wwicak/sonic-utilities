@@ -17,9 +17,9 @@ function is_dpu()
 }
 
 # Function to retrieve number of DPUs
-function get_num_dpu()
+function get_num_dpus()
 {
-    return $(python3 -c "from utilities_common.chassis import get_num_dpu; get_num_dpus()")
+    return $(python3 -c "from utilities_common.chassis import get_num_dpus; get_num_dpus()")
 }
 
 # Function to retrieve DPU IP from CONFIG_DB
@@ -218,11 +218,11 @@ function handle_smart_switch() {
     local PRE_SHUTDOWN=$2
     local DPU_NAME=$3
 
-    NUM_DPU=$(get_num_dpu)
+    NUM_DPU=$(get_num_dpus)
 
     if [[ "$REBOOT_DPU" == "yes" ]]; then
         if [[ "$PRE_SHUTDOWN" == "yes" ]]; then
-            echo "Invalid, '-p' option specified"
+            echo "Invalid, '-p' option specified on the smart switch"
             return $EXIT_ERROR
         fi
 
@@ -238,20 +238,15 @@ function handle_smart_switch() {
             echo "User requested to reboot the device ${DPU_MODULE_NAME}"
             reboot_dpu "$DPU_MODULE_NAME" "$MODULE_REBOOT_DPU"
         else
-            echo "Invalid '-d' option specified for a non-smart switch"
+            echo "Invalid '-d' option specified for a non-smart-switch"
             return $EXIT_ERROR
         fi
     fi
-
-    debug "Is the platform DPU: $(is_dpu)"
 
     # Check if system is a DPU and handle -p option accordingly
     if is_dpu; then
         if [[ "$PRE_SHUTDOWN" != "yes" ]]; then
             echo "Invalid, '-p' option not specified for a DPU"
-            return ${EXIT_ERROR}
-        elif [[ "$PRE_SHUTDOWN" == "yes" ]]; then
-            echo "Invalid '-p' option specified for a non-DPU"
             return ${EXIT_ERROR}
         fi
         return ${EXIT_SUCCESS}
