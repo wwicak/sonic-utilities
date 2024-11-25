@@ -95,6 +95,7 @@ def reboot_dpu(module_name, reboot_type):
         status = platform_chassis.reboot(module_name, reboot_type)
         if not status:
             log.log_error("Reboot status for module {}: {}".format(module_name, status))
+            return False
         return True
     except Exception as e:
         log.log_error("Unexpected error occurred while rebooting module {}: {}".format(module_name, e))
@@ -159,7 +160,7 @@ def pci_reattach_module(module_name):
         return False
 
 
-def main():
+def parse_args():
     if len(sys.argv) < 3:
         print("Usage: reboot_helper.py <command> <module_name> [reboot_type]")
         sys.exit(EXIT_FAIL)
@@ -186,4 +187,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parse_args()

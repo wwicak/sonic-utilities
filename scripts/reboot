@@ -189,7 +189,7 @@ function check_conflict_boot_in_fw_update()
 
 function parse_options()
 {
-    while getopts "h?vfpd" opt; do
+    while getopts "h?vfpd:" opt; do
         case ${opt} in
             h|\? )
                 show_help_and_exit
@@ -243,7 +243,8 @@ fi
 
 debug "User requested rebooting device ..."
 
-smart_switch_result=$(handle_smart_switch "$REBOOT_DPU" "$PRE_SHUTDOWN" "$DPU_MODULE_NAME")
+handle_smart_switch "$REBOOT_DPU" "$PRE_SHUTDOWN" "$DPU_MODULE_NAME"
+smart_switch_result=$?
 if [[ $smart_switch_result -ne 0 ]]; then
     exit $smart_switch_result
 fi

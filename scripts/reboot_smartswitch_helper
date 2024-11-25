@@ -4,46 +4,42 @@ declare -r GNMI_PORT=50052
 declare -r MODULE_REBOOT_DPU="DPU"
 declare -r MODULE_REBOOT_SMARTSWITCH="SMARTSWITCH"
 
+# Function to print debug message
+function log_message() {
+    local message=$1
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $message" >&2
+}
+
 # Function to check if running on smart switch
 function is_smartswitch()
 {
-    return $(python3 -c "from utilities_common.chassis import is_smartswitch; is_smartswitch()")
+    python3 -c "from utilities_common.chassis import is_smartswitch; print(is_smartswitch())" | grep -q "True"
 }
 
 # Function to check if running on DPU
 function is_dpu()
 {
-    return $(python3 -c "from utilities_common.chassis import is_dpu; is_dpu()")
+    python3 -c "from utilities_common.chassis import is_dpu; print(is_dpu())" | grep -q "True"
 }
 
 # Function to retrieve number of DPUs
 function get_num_dpus()
 {
-    return $(python3 -c "from utilities_common.chassis import get_num_dpus; get_num_dpus()")
+    python3 -c "from utilities_common.chassis import get_num_dpus; print(get_num_dpus())"
 }
 
 # Function to retrieve DPU IP from CONFIG_DB
 function get_dpu_ip()
 {
     local DPU_NAME=$1
-    dpu_ip=$(sonic-db-cli CONFIG_DB HGET "DHCP_SERVER_IPV4_PORT|bridge-midplane|${DPU_NAME}" "ips@")
-    if [ $? -ne 0 ] || [ -z "$dpu_ip" ]; then
-        echo "Error: Failed to retrieve DPU IP address for ${DPU_NAME}"
-        return ${EXIT_ERROR}
-    fi
-    debug "$DPU_NAME ip: $dpu_ip"
+    sonic-db-cli CONFIG_DB HGET "DHCP_SERVER_IPV4_PORT|bridge-midplane|${DPU_NAME}" "ips@"
 }
 
 # Function to retrieve GNMI port from CONFIG_DB
-function get_gnmi_port() {
+function get_gnmi_port()
+{
     local DPU_NAME=$1
-    port=$(sonic-db-cli CONFIG_DB HGET "DPU_PORT|$DPU_NAME" "gnmi")
-    if [ $? -ne 0 ] || [ -z "$port" ]; then
-        debug "Error: Failed to retrieve GNMI port"
-        port=$GNMI_PORT  #Hardcoded default GNMI port
-        return ${EXIT_ERROR}
-    fi
-    debug "$DPU_NAME GNMI port:$port"
+    sonic-db-cli CONFIG_DB HGET "DPU_PORT|$DPU_NAME" "gnmi"
 }
 
 # Function to get reboot status from DPU
@@ -51,87 +47,75 @@ function get_reboot_status()
 {
     local dpu_ip=$1
     local port=$2
-    reboot_status=$(docker exec -i gnmi gnoi_client -target ${dpu_ip}:${port} -logtostderr -insecure -rpc RebootStatus)
+    local reboot_status
+    reboot_status=$(docker exec -i gnmi gnoi_client -target "${dpu_ip}:${port}" -logtostderr -insecure -rpc RebootStatus 2>/dev/null)
     if [ $? -ne 0 ] || [ -z "$reboot_status" ]; then
-        echo "Error: Failed to send reboot status command to DPU ${DPU_NAME}"
+        log_message "Error: Failed to send reboot status command to DPU ${DPU_NAME}"
         return ${EXIT_ERROR}
     fi
-    debug "$reboot_status"
+    local is_reboot_active
+    is_reboot_active=$(echo "$reboot_status" | grep "active" | awk '{print $2}')
+    if [ "$is_reboot_active" == "false" ]; then
+        log_message "DPU ${DPU_NAME} has finished rebooting"
+        return ${EXIT_SUCCESS}
+    fi
+    return ${EXIT_ERROR}
 }
 
-# Function to retrieve DPU bus info from platform JSON
-function get_dpu_bus_info() {
+# Function to detach PCI module
+function pci_detach_module()
+{
     local DPU_NAME=$1
-    DPU_BUS_INFO=$(jq -r --arg DPU_NAME "${DPU_NAME}" '.DPUS[] | select(has($DPU_NAME)) | .[$DPU_NAME].bus_info' "$PLATFORM_JSON_PATH")
-    if [ -z "$DPU_BUS_INFO" ]; then
-        echo "Error: bus_info not found for DPU ${DPU_NAME}"
-        exit ${EXIT_ERROR}
-    fi
-    debug "$DPU_NAME : $DPU_BUS_INFO"
+    python3 -c "import reboot_helper; reboot_helper.pci_detach_module('${DPU_NAME}')"
 }
 
-#Function to detach PCI module
-function pci_detach_module() {
+# Function to rescan PCI module
+function pci_reattach_module()
+{
     local DPU_NAME=$1
-
-    status = $(python3 -c "import reboot_helper; reboot_helper.pci_detach_module('${DPU_NAME}')")
-    if [ -z "$status" ] || [ "$status" = "false" ]; then
-        # Check if DPU exists and retrieve bus info
-        DPU_BUS_INFO=$(get_dpu_bus_info "${DPU_NAME}")
-        echo 1 > /sys/bus/pci/devices/${DPU_BUS_INFO}/remove
-    fi
-}
-
-#Function to rescan PCI module
-function pci_reattach_module() {
-    local DPU_NAME=$1
-
-    status = $(python3 -c "import reboot_helper; reboot_helper.pci_reattach_module('${DPU_NAME}')")
-    if [ -z "$status" ] || [ "$status" = "false" ]; then
-        echo 1 > /sys/bus/pci/rescan
-    fi
+    python3 -c "import reboot_helper; reboot_helper.pci_reattach_module('${DPU_NAME}')"
 }
 
 # Function to reboot DPU
-function reboot_dpu_platform() {
+function reboot_dpu_platform()
+{
     local DPU_NAME=$1
     local REBOOT_TYPE=$2
-
-    local reboot_status=$(python3 -c "import reboot_helper; reboot_helper.reboot_dpu('${DPU_NAME}', '${REBOOT_TYPE}')")
-    if [ -z "$reboot_status" ] || [ "$reboot_status" = "false" ]; then
-        echo "Error: Failed to reboot the DPU"
-        return ${EXIT_ERROR}
-    fi
+    python3 -c "import reboot_helper; reboot_helper.reboot_dpu('${DPU_NAME}', '${REBOOT_TYPE}')"
 }
 
-#Function to wait for DPU reboot status
-function wait_for_dpu_reboot_status() {
+# Function to wait for DPU reboot status
+function wait_for_dpu_reboot_status()
+{
     local dpu_ip=$1
     local port=$2
 
-    # Retrieve dpu_halt_services_timeout value using jq
-    local dpu_halt_services_timeout=$(jq -r '.dpu_halt_services_timeout' "$PLATFORM_JSON_PATH" 2>/dev/null)
+    if [[ -z "$PLATFORM_JSON_PATH" ]]; then
+        log_message "Error: PLATFORM_JSON_PATH is not defined"
+        exit $EXIT_ERROR
+    fi
+
+    local dpu_halt_services_timeou
+    dpu_halt_services_timeout=$(jq -r '.dpu_halt_services_timeout' "$PLATFORM_JSON_PATH" 2>/dev/null)
     if [ $? -ne 0 ]; then
-        echo "Error: Failed to retrieve dpu_halt_services_timeout from ${PLATFORM_JSON_PATH}"
+        log_message "Error: Failed to retrieve dpu_halt_services_timeout from ${PLATFORM_JSON_PATH}"
         return ${EXIT_ERROR}
     fi
 
-    # Poll on reboot status response with a timeout mechanism
     local poll_interval=5
     local waited_time=0
-    local reboot_status
     while true; do
-        reboot_status=$(get_reboot_status "${dpu_ip}" "${port}")
-        debug "GNOI RebootStatus response ${reboot_status}"
-        is_reboot_active=$(echo "$reboot_status" | grep "active" | awk '{print $2}')
-        if [ "$is_reboot_active" == "false" ]; then
+        local reboot_status
+        get_reboot_status "${dpu_ip}" "${port}"
+        reboot_status=$?
+        if [ $reboot_status -eq ${EXIT_SUCCESS} ]; then
             break
         fi
 
         sleep "$poll_interval"
         waited_time=$((waited_time + poll_interval))
         if [ $waited_time -ge $dpu_halt_services_timeout ]; then
-            echo "Error: Timeout waiting for DPU ${DPU_NAME} to finish rebooting"
+            log_message "Error: Timeout waiting for DPU ${DPU_NAME} to finish rebooting"
             return ${EXIT_ERROR}
         fi
     done
@@ -142,16 +126,21 @@ function gnmi_reboot_dpu()
 {
     # Retrieve DPU IP and GNMI port
     dpu_ip=$(get_dpu_ip "${DPU_NAME}")
+    log_message "DPU IP ${DPU_NAME}: $dpu_ip"
     port=$(get_gnmi_port "${DPU_NAME}")
+    if [ -z "$port" ]; then
+        port=$GNMI_PORT # Default GNMI port
+    fi
+    log_message "GNMI port ${DPU_NAME}: $port"
 
-    if [ -z "$dpu_ip" ] || [ -z "$port" ]; then
-        echo "Error: Failed to retrieve DPU IP or GNMI port for ${DPU_NAME}"
+    if [ -z "$dpu_ip" ]; then
+        log_message "Error: Failed to retrieve DPU IP for ${DPU_NAME}"
         return ${EXIT_ERROR}
     fi
 
     docker exec -i gnmi gnoi_client -target ${dpu_ip}:${port} -logtostderr -insecure -rpc Reboot -jsonin '{"method":3}'
     if [ $? -ne 0 ]; then
-        echo "Error: Failed to send reboot command to DPU ${DPU_NAME}"
+        log_message "Error: Failed to send reboot command to DPU ${DPU_NAME}"
         return ${EXIT_ERROR}
     fi
 
@@ -167,7 +156,11 @@ function reboot_dpu()
     debug "User requested rebooting device ${DPU_NAME} ..."
 
     # Send reboot command to DPU
-    gnoi_reboot_dpu "${dpu_ip}" "${port}"
+    gnmi_reboot_dpu "${DPU_NAME}"
+    if [ $? -ne 0 ]; then
+        log_message "Error: Failed to reboot DPU ${DPU_NAME}"
+        return ${EXIT_ERROR}
+    fi
 
     # Update STATE_DB and handle PCIe removal and rescan
     sonic-db-cli state_db set "PCIE_DETACH_INFO|${DPU_NAME}" '{"dpu_id": "'${DPU_INDEX}'", "dpu_state": "detaching", "bus_info": "'${DPU_BUS_INFO}'"}'
@@ -184,15 +177,20 @@ function reboot_all_dpus() {
     local NUM_DPU=$1
 
     if [[ -z $NUM_DPU ]]; then
-        echo "Error: Failed to retrieve number of DPUs or no DPUs found"
+        log_message "Error: Failed to retrieve number of DPUs or no DPUs found"
         return
     fi
 
+    local failures=0
     for (( i=0; i<"$NUM_DPU"; i++ )); do
-        echo "Rebooting DPU module dpu$i"
+        log_message "Rebooting DPU module dpu$i"
         reboot_dpu "dpu$i" "$MODULE_REBOOT_SMARTSWITCH" &
+        if [ $? -ne 0 ]; then
+            ((failures++))
+        fi
     done
     wait
+    return $failures
 }
 
 # Function to verify DPU module name
@@ -201,13 +199,13 @@ function verify_dpu_module_name() {
     local NUM_DPU=$2
 
     if [[ -z "$DPU_MODULE_NAME" ]]; then
-        echo "Error: DPU module name not provided"
+        log_message "Error: DPU module name not provided"
         return $EXIT_ERROR
     fi
 
     NUM_DPU=$((NUM_DPU - 1))
     if [[ ! "$DPU_MODULE_NAME" =~ ^dpu[0-$NUM_DPU]$ ]]; then
-        echo "Error: Invalid DPU module name provided"
+        log_message "Error: Invalid DPU module name provided"
         return $EXIT_ERROR
     fi
 }
@@ -220,40 +218,50 @@ function handle_smart_switch() {
 
     NUM_DPU=$(get_num_dpus)
 
-    if [[ "$REBOOT_DPU" == "yes" ]]; then
-        if [[ "$PRE_SHUTDOWN" == "yes" ]]; then
-            echo "Invalid, '-p' option specified on the smart switch"
+    if is_dpu; then
+        if [[ "$PRE_SHUTDOWN" != "yes" ]]; then
+            log_message "Error: '-p' option not specified for a DPU"
+            return $EXIT_ERROR
+        elif [[ "$REBOOT_DPU" == "yes" ]]; then
+            log_message "Error: '-d' option specified for a DPU"
             return $EXIT_ERROR
         fi
+        return $EXIT_SUCCESS
+    fi
 
+    if [[ "$PRE_SHUTDOWN" == "yes" ]]; then
+        log_message "Error: '-p' option specified for a non-DPU"
+        return $EXIT_ERROR
+    fi
+
+    if [[ "$REBOOT_DPU" == "yes" ]]; then
         if is_smartswitch; then
-           if [[ -z $NUM_DPU ]]; then
-               echo "Error: Failed to retrieve number of DPUs or no DPUs found"
-               return $EXIT_ERROR
+            if [[ -z $NUM_DPU ]]; then
+                log_message "Error: Failed to retrieve number of DPUs or no DPUs found"
+                return $EXIT_ERROR
             fi
 
             DPU_MODULE_NAME="${DPU_NAME,,}"
             verify_dpu_module_name "$DPU_MODULE_NAME" "$NUM_DPU"
+            result=$?
+            if [[ $result -ne $EXIT_SUCCESS ]]; then
+                return $result
+            fi
 
-            echo "User requested to reboot the device ${DPU_MODULE_NAME}"
+            log_message "Rebooting device ${DPU_MODULE_NAME}"
             reboot_dpu "$DPU_MODULE_NAME" "$MODULE_REBOOT_DPU"
+            result=$?
+            return $result
         else
-            echo "Invalid '-d' option specified for a non-smart-switch"
+            log_message "Error: '-d' option specified for a non-smart-switch"
             return $EXIT_ERROR
         fi
-    fi
-
-    # Check if system is a DPU and handle -p option accordingly
-    if is_dpu; then
-        if [[ "$PRE_SHUTDOWN" != "yes" ]]; then
-            echo "Invalid, '-p' option not specified for a DPU"
-            return ${EXIT_ERROR}
-        fi
-        return ${EXIT_SUCCESS}
     fi
 
     # If the system is a smart switch, reboot all DPUs in parallel
     if is_smartswitch; then
         reboot_all_dpus "$NUM_DPU" "$MODULE_REBOOT_SMARTSWITCH"
+        result=$?
+        return $result
     fi
 }
