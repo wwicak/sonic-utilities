@@ -125,6 +125,7 @@ def pci_detach_module(module_name):
         status = platform_chassis.pci_detach(module_name)
         if not status:
             log.log_error("PCI detach status for module {}: {}".format(module_name, status))
+            return False
         return True
     except Exception as e:
         log.log_error("Unexpected error occurred while detaching module {}: {}".format(module_name, e))
@@ -154,6 +155,7 @@ def pci_reattach_module(module_name):
         status = platform_chassis.pci_reattach(module_name)
         if not status:
             log.log_error("PCI detach status for module {}: {}".format(module_name, status))
+            return False
         return True
     except Exception as e:
         log.log_error("Unexpected error occurred while detaching module {}: {}".format(module_name, e))

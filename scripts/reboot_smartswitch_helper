@@ -66,14 +66,24 @@ function get_reboot_status()
 function pci_detach_module()
 {
     local DPU_NAME=$1
+    local DPU_BUS_INFO=$2
     python3 -c "import reboot_helper; reboot_helper.pci_detach_module('${DPU_NAME}')"
+    if [ $? -ne 0 ]; then
+        log_message "Error: PCI detach vendor API is not available"
+        echo 1 > /sys/bus/pci/devices/${DPU_BUS_INFO}/remove
+    fi
 }
 
 # Function to rescan PCI module
 function pci_reattach_module()
 {
     local DPU_NAME=$1
+    local DPU_BUS_INFO=$2
     python3 -c "import reboot_helper; reboot_helper.pci_reattach_module('${DPU_NAME}')"
+    if [ $? -ne 0 ]; then
+        log_message "Error: PCI reattach vendor API is not available"
+        echo 1 > /sys/bus/pci/rescan
+    fi
 }
 
 # Function to reboot DPU
@@ -162,14 +172,16 @@ function reboot_dpu()
         return ${EXIT_ERROR}
     fi
 
+    DPU_BUS_INFO=$(jq -r --arg DPU_NAME "${DPU_NAME}" '.DPUS[] | select(has($DPU_NAME)) | .[$DPU_NAME].bus_info' "$PLATFORM_JSON_PATH")
+
     # Update STATE_DB and handle PCIe removal and rescan
-    sonic-db-cli state_db set "PCIE_DETACH_INFO|${DPU_NAME}" '{"dpu_id": "'${DPU_INDEX}'", "dpu_state": "detaching", "bus_info": "'${DPU_BUS_INFO}'"}'
+    sonic-db-cli STATE_DB set "PCIE_DETACH_INFO|${DPU_NAME}" '{"dpu_id": "'${DPU_INDEX}'", "dpu_state": "detaching", "bus_info": "'${DPU_BUS_INFO}'"}'
 
-    pci_detach_module "${DPU_NAME}"
+    pci_detach_module "${DPU_NAME} ${DPU_BUS_INFO}"
     reboot_dpu_platform "${DPU_NAME}"
-    pci_reattach_module "${DPU_NAME}"
+    pci_reattach_module "${DPU_NAME} ${DPU_BUS_INFO}"
 
-    sonic-db-cli state_db del "PCIE_DETACH_INFO|${DPU_NAME}"
+    sonic-db-cli STATE_DB del "PCIE_DETACH_INFO|${DPU_NAME}"
 }
 
 # Function to reboot all DPUs in parallel
