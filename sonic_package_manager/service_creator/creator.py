@@ -257,7 +257,6 @@ class ServiceCreator:
         script_template = get_tmpl_path(DOCKER_CTL_SCRIPT_TEMPLATE)
         run_opt = []
         sonic_asic_platform = os.environ.get("CONFIGURED_PLATFORM")
-        image_name = os.environ.get("docker_image_name")
         if sonic_asic_platform is None:
             sonic_asic_platform = device_info.get_platform_info().get('asic_type', None)
 
@@ -283,10 +282,11 @@ class ServiceCreator:
         render_ctx = {
             'docker_container_name': name,
             'docker_image_id': image_id,
-            'docker_image_name': image_name,
             'docker_image_run_opt': run_opt,
             'sonic_asic_platform': sonic_asic_platform
         }
+        if package.name:
+            render_ctx['docker_image_name'] = package.name
         render_template(script_template, script_path, render_ctx, executable=True)
         log.info(f'generated {script_path}')
 
