@@ -282,11 +282,10 @@ class ServiceCreator:
         render_ctx = {
             'docker_container_name': name,
             'docker_image_id': image_id,
+            'docker_image_name': package.entry.repository,
             'docker_image_run_opt': run_opt,
             'sonic_asic_platform': sonic_asic_platform
         }
-        if package.name:
-            render_ctx['docker_image_name'] = package.name
         render_template(script_template, script_path, render_ctx, executable=True)
         log.info(f'generated {script_path}')
 
