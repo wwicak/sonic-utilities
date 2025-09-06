@@ -25,7 +25,7 @@ class TestSquashFs(object):
     @patch("os.path.exists", return_value=True)
     @patch("subprocess.check_call")
     @patch("os.path.ismount", MagicMock(return_value=False))
-    @patch("fwutil.lib.SquashFs.next_image", MagicMock(return_value="SONiC-OS-123456"))
+    @patch("fwutil.lib.SquashFs.next_image", MagicMock(return_value="Eguard-OS-123456"))
     def test_mount_next_image_fs(self, mock_check_call, mock_exists, mock_mkdir):
         image_stem = fwutil_lib.SquashFs.next_image()
         sqfs = fwutil_lib.SquashFs()
@@ -56,11 +56,11 @@ class TestSquashFs(object):
     @patch("os.path.exists", return_value=True)
     @patch("subprocess.check_call")
     @patch("os.path.ismount", MagicMock(return_value=True))
-    @patch("fwutil.lib.SquashFs.next_image", MagicMock(return_value="SONiC-OS-123456"))
+    @patch("fwutil.lib.SquashFs.next_image", MagicMock(return_value="Eguard-OS-123456"))
     def test_unmount_next_image_fs(self, mock_check_call, mock_exists, mock_rmdir):
         sqfs = fwutil_lib.SquashFs()
-        sqfs.fs_mountpoint = "/tmp/image-{}-fs".format("SONiC-OS-123456")
-        sqfs.overlay_mountpoint = "/tmp/image-{}-overlay".format("SONiC-OS-123456")
+        sqfs.fs_mountpoint = "/tmp/image-{}-fs".format("Eguard-OS-123456")
+        sqfs.overlay_mountpoint = "/tmp/image-{}-overlay".format("Eguard-OS-123456")
 
         sqfs.umount_next_image_fs()
 

@@ -114,7 +114,7 @@ function setup_reboot_variables()
 {
     # Kernel and initrd image
     NEXT_SONIC_IMAGE=$(sonic-installer list | grep "Next: " | cut -d ' ' -f 2)
-    IMAGE_PATH="/host/image-${NEXT_SONIC_IMAGE#SONiC-OS-}"
+    IMAGE_PATH="/host/image-${NEXT_SONIC_IMAGE#Eguard-OS-}"
     if grep -q aboot_platform= /host/machine.conf; then
         KERNEL_IMAGE="$(ls $IMAGE_PATH/boot/vmlinuz-*)"
         BOOT_OPTIONS="$(cat "$IMAGE_PATH/kernel-cmdline" | tr '\n' ' ') SONIC_BOOT_TYPE=${BOOT_TYPE_ARG}"
