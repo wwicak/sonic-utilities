@@ -72,7 +72,7 @@ def test_set_fips_grub():
     os.makedirs(tmp_grub_path, exist_ok=True)
     shutil.copy(grub_config, tmp_grub_path)
 
-    image = 'SONiC-OS-internal-202205.57377412-84a9a7f11b'
+    image = 'Eguard-OS-internal-202205.57377412-84a9a7f11b'
     bootloader = grub.GrubBootloader()
 
     # The the default setting

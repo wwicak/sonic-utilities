@@ -214,7 +214,7 @@ class SquashFs(object):
     """
     SquashFs
     """
-    OS_PREFIX = "SONiC-OS-"
+    OS_PREFIX = "Eguard-OS-"
 
     FS_PATH_TEMPLATE = "/host/image-{}/fs.squashfs"
     FS_RW_TEMPLATE = "/host/image-{}/rw"

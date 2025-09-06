@@ -33,9 +33,9 @@ function GetCurrentASICConfigChecksum()
 # Exits with error DST_ASIC_CONFIG_NOT_FOUND if the checksum is not found
 function GetDestinationASICConfigChecksum()
 {
-    DST_IMAGE_PATH="/host/image-${DST_SONIC_IMAGE#SONiC-OS-}"
+    DST_IMAGE_PATH="/host/image-${DST_SONIC_IMAGE#Eguard-OS-}"
     FS_PATH="${DST_IMAGE_PATH}/fs.squashfs"
-    FS_MOUNTPOINT="/tmp/image-${DST_SONIC_IMAGE#SONiC-OS-}-fs"
+    FS_MOUNTPOINT="/tmp/image-${DST_SONIC_IMAGE#Eguard-OS-}-fs"
 
     # Verify that the destination image exists
     if [[ ! -d ${DST_IMAGE_PATH} ]]; then

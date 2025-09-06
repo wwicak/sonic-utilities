@@ -12,7 +12,7 @@ from shlex import join
 from .exception import SonicRuntimeException
 
 HOST_PATH = '/host'
-IMAGE_PREFIX = 'SONiC-OS-'
+IMAGE_PREFIX = 'Eguard-OS-'
 IMAGE_DIR_PREFIX = 'image-'
 ROOTFS_NAME = 'fs.squashfs'
 UPPERDIR_NAME = 'rw'
